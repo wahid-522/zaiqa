@@ -15,7 +15,36 @@ class LocalMockDataSource {
 
   // In-memory persistent state for development session
   final Set<String> _favoriteIds = {'rest_1', 'rest_3'};
-  final List<OrderModel> _orderHistory = [];
+  final List<OrderModel> _orderHistory = [
+    OrderModel(
+      id: 'ZQ-90182',
+      restaurantId: 'rest_spice_route',
+      restaurantName: 'The Spice Route',
+      items: const [],
+      subtotal: 1300.0,
+      deliveryFee: 150.0,
+      totalAmount: 1450.0,
+      status: OrderStatus.delivered,
+      createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+      deliveryAddress: 'House #12, Street 4, DHA Phase 6, Karachi',
+      paymentMethod: 'Cash on Delivery',
+      estimatedDeliveryTime: 'Delivered in 35 min',
+    ),
+    OrderModel(
+      id: 'ZQ-90175',
+      restaurantId: 'rest_spice_route',
+      restaurantName: 'The Spice Route',
+      items: const [],
+      subtotal: 950.0,
+      deliveryFee: 150.0,
+      totalAmount: 1100.0,
+      status: OrderStatus.preparing,
+      createdAt: DateTime.now().subtract(const Duration(minutes: 25)),
+      deliveryAddress: 'Apartment 4B, Falcon Complex, Karachi',
+      paymentMethod: 'Credit Card',
+      estimatedDeliveryTime: '25 min',
+    ),
+  ];
   UserModel _currentUser = const UserModel(
     id: 'user_101',
     name: 'Hamza Khan',
@@ -316,6 +345,11 @@ class LocalMockDataSource {
   Future<List<OrderModel>> getOrderHistory() async {
     await Future.delayed(simulatedDelay);
     return List.from(_orderHistory);
+  }
+
+  Future<List<OrderModel>> getRestaurantOrders(String restaurantId) async {
+    await Future.delayed(simulatedDelay);
+    return _orderHistory.where((o) => o.restaurantId == restaurantId).toList();
   }
 
   Future<OrderModel?> updateOrderStatus(String orderId, OrderStatus newStatus) async {

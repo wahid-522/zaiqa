@@ -70,6 +70,16 @@ class OrderRepositoryImpl implements OrderRepository {
   }
 
   @override
+  Future<Result<AppFailure, List<Order>>> getRestaurantOrders(String restaurantId) async {
+    try {
+      final orders = await _dataSource.getRestaurantOrders(restaurantId);
+      return Success(orders);
+    } catch (e) {
+      return Failure(AppFailure('Failed to fetch restaurant orders: $e'));
+    }
+  }
+
+  @override
   Future<Result<AppFailure, Order>> updateOrderStatus(
     String orderId,
     OrderStatus newStatus,

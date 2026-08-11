@@ -17,6 +17,8 @@ abstract class OrderRepository {
 
   Future<Result<AppFailure, List<Order>>> getOrderHistory();
 
+  Future<Result<AppFailure, List<Order>>> getRestaurantOrders(String restaurantId);
+
   Future<Result<AppFailure, Order>> updateOrderStatus(
     String orderId,
     OrderStatus newStatus,

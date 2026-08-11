@@ -15,7 +15,7 @@ import '../../presentation/features/main_navigation/screens/main_navigation_scre
 import '../../presentation/features/order_tracking/screens/order_tracking_screen.dart';
 import '../../presentation/features/profile/screens/profile_screen.dart';
 import '../../presentation/features/restaurant_detail/screens/restaurant_detail_screen.dart';
-import '../../presentation/features/restaurant_owner/screens/restaurant_menu_management_screen.dart';
+import '../../presentation/features/restaurant_owner/screens/restaurant_main_navigation_screen.dart';
 import '../../presentation/features/restaurant_owner/screens/restaurant_onboarding_screen.dart';
 import '../../presentation/features/review/screens/leave_review_screen.dart';
 import '../../presentation/features/review/screens/view_review_screen.dart';
@@ -62,7 +62,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           return RouteNames.homePath;
         }
 
-        // Security Guard 2: Restaurant Owner trying to access Customer route -> redirect to Menu Management
+        // Security Guard 2: Restaurant Owner trying to access Customer route -> redirect to Restaurant Portal
         if (isRestaurantOwner && !isOwnerRoute) {
           return hasRestaurant
               ? RouteNames.restaurantMenuManagementPath
@@ -101,7 +101,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteNames.restaurantMenuManagementPath,
         name: RouteNames.restaurantMenuManagement,
-        builder: (context, state) => const RestaurantMenuManagementScreen(),
+        builder: (context, state) => const RestaurantMainNavigationScreen(),
       ),
       GoRoute(
         path: RouteNames.restaurantDetailPath,

@@ -17,6 +17,7 @@ import '../domain/usecases/manage_cart_usecase.dart';
 import '../domain/usecases/place_order_usecase.dart';
 import '../domain/usecases/manage_menu_usecase.dart';
 import '../domain/usecases/create_restaurant_usecase.dart';
+import '../domain/usecases/get_restaurant_orders_usecase.dart';
 import 'features/address_picker/viewmodels/address_picker_viewmodel.dart';
 
 // Datasource Providers
@@ -74,6 +75,10 @@ final manageMenuUseCaseProvider = Provider<ManageMenuUseCase>((ref) {
 
 final createRestaurantUseCaseProvider = Provider<CreateRestaurantUseCase>((ref) {
   return CreateRestaurantUseCase(ref.watch(restaurantRepositoryProvider));
+});
+
+final getRestaurantOrdersUseCaseProvider = Provider<GetRestaurantOrdersUseCase>((ref) {
+  return GetRestaurantOrdersUseCase(ref.watch(orderRepositoryProvider));
 });
 
 // ViewModel Providers
