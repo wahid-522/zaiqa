@@ -42,6 +42,7 @@ enum OrderStatus {
 /// Pure Domain Entity representing a completed/active Order.
 class Order extends Equatable {
   final String id;
+  final String? userId;
   final String restaurantId;
   final String restaurantName;
   final List<CartItem> items;
@@ -56,6 +57,7 @@ class Order extends Equatable {
 
   const Order({
     required this.id,
+    this.userId,
     required this.restaurantId,
     required this.restaurantName,
     required this.items,
@@ -71,6 +73,7 @@ class Order extends Equatable {
 
   Order copyWith({
     String? id,
+    String? userId,
     String? restaurantId,
     String? restaurantName,
     List<CartItem>? items,
@@ -85,6 +88,7 @@ class Order extends Equatable {
   }) {
     return Order(
       id: id ?? this.id,
+      userId: userId ?? this.userId,
       restaurantId: restaurantId ?? this.restaurantId,
       restaurantName: restaurantName ?? this.restaurantName,
       items: items ?? this.items,
@@ -102,6 +106,7 @@ class Order extends Equatable {
   @override
   List<Object?> get props => [
         id,
+        userId,
         restaurantId,
         restaurantName,
         items,

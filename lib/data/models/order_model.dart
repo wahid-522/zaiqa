@@ -5,6 +5,7 @@ import 'cart_item_model.dart';
 class OrderModel extends Order {
   const OrderModel({
     required super.id,
+    super.userId,
     required super.restaurantId,
     required super.restaurantName,
     required super.items,
@@ -21,6 +22,7 @@ class OrderModel extends Order {
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     return OrderModel(
       id: json['id'] as String,
+      userId: json['userId'] as String?,
       restaurantId: json['restaurantId'] as String,
       restaurantName: json['restaurantName'] as String,
       items: (json['items'] as List<dynamic>)
@@ -40,6 +42,7 @@ class OrderModel extends Order {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'userId': userId,
       'restaurantId': restaurantId,
       'restaurantName': restaurantName,
       'items': items.map((item) => CartItemModel.fromEntity(item).toJson()).toList(),
@@ -57,6 +60,7 @@ class OrderModel extends Order {
   factory OrderModel.fromEntity(Order entity) {
     return OrderModel(
       id: entity.id,
+      userId: entity.userId,
       restaurantId: entity.restaurantId,
       restaurantName: entity.restaurantName,
       items: entity.items,
@@ -74,6 +78,7 @@ class OrderModel extends Order {
   @override
   OrderModel copyWith({
     String? id,
+    String? userId,
     String? restaurantId,
     String? restaurantName,
     List<CartItem>? items,
@@ -88,6 +93,7 @@ class OrderModel extends Order {
   }) {
     return OrderModel(
       id: id ?? this.id,
+      userId: userId ?? this.userId,
       restaurantId: restaurantId ?? this.restaurantId,
       restaurantName: restaurantName ?? this.restaurantName,
       items: items ?? this.items,

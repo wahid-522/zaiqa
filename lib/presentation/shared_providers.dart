@@ -42,7 +42,7 @@ final cartRepositoryProvider = Provider<CartRepository>((ref) {
 });
 
 final orderRepositoryProvider = Provider<OrderRepository>((ref) {
-  return OrderRepositoryImpl(ref.watch(localMockDataSourceProvider));
+  return OrderRepositoryImpl();
 });
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {

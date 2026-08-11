@@ -10,7 +10,10 @@ import '../../viewmodels/menu_management_viewmodel.dart';
 
 final restaurantOrdersProvider = FutureProvider.autoDispose<List<Order>>((ref) async {
   final user = ref.watch(authViewModelProvider).user;
-  final restId = user?.restaurantId ?? 'rest_spice_route';
+  final restId = user?.restaurantId;
+  if (restId == null || restId.trim().isEmpty) {
+    return const [];
+  }
   final useCase = ref.watch(getRestaurantOrdersUseCaseProvider);
 
   final result = await useCase.execute(restId);

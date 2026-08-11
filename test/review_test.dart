@@ -16,7 +16,7 @@ void main() {
     setUp(() {
       dataSource = LocalMockDataSource();
       reviewRepository = ReviewRepositoryImpl(dataSource);
-      orderRepository = OrderRepositoryImpl(dataSource);
+      orderRepository = OrderRepositoryImpl();
       submitReviewUseCase = SubmitReviewUseCase(reviewRepository, orderRepository);
       getReviewForOrderUseCase = GetReviewForOrderUseCase(reviewRepository);
     });
