@@ -40,4 +40,10 @@ class RouteNames {
 
   static const String favorites = 'favorites';
   static const String favoritesPath = '/favorites';
+
+  static const String leaveReview = 'leaveReview';
+  static const String leaveReviewPath = '/leave-review/:orderId';
+
+  static const String viewReview = 'viewReview';
+  static const String viewReviewPath = '/view-review/:orderId';
 }

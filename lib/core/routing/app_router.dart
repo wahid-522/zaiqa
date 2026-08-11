@@ -15,6 +15,8 @@ import '../../presentation/features/main_navigation/screens/main_navigation_scre
 import '../../presentation/features/order_tracking/screens/order_tracking_screen.dart';
 import '../../presentation/features/profile/screens/profile_screen.dart';
 import '../../presentation/features/restaurant_detail/screens/restaurant_detail_screen.dart';
+import '../../presentation/features/review/screens/leave_review_screen.dart';
+import '../../presentation/features/review/screens/view_review_screen.dart';
 import 'route_names.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -104,6 +106,22 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final orderId = state.pathParameters['orderId'] ?? '';
           return OrderTrackingScreen(orderId: orderId);
+        },
+      ),
+      GoRoute(
+        path: RouteNames.leaveReviewPath,
+        name: RouteNames.leaveReview,
+        builder: (context, state) {
+          final orderId = state.pathParameters['orderId'] ?? '';
+          return LeaveReviewScreen(orderId: orderId);
+        },
+      ),
+      GoRoute(
+        path: RouteNames.viewReviewPath,
+        name: RouteNames.viewReview,
+        builder: (context, state) {
+          final orderId = state.pathParameters['orderId'] ?? '';
+          return ViewReviewScreen(orderId: orderId);
         },
       ),
       GoRoute(
