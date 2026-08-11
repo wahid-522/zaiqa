@@ -5,6 +5,7 @@ abstract class AuthRepository {
   Future<Result<AppFailure, UserProfile>> loginWithEmail({
     required String email,
     required String password,
+    UserRole? role,
   });
 
   Future<Result<AppFailure, UserProfile>> signupWithEmail({

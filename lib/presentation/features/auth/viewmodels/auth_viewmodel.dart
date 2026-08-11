@@ -50,9 +50,17 @@ class AuthViewModel extends StateNotifier<AuthState> {
     );
   }
 
-  Future<bool> login({required String email, required String password}) async {
+  Future<bool> login({
+    required String email,
+    required String password,
+    UserRole? role,
+  }) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
-    final result = await _authRepository.loginWithEmail(email: email, password: password);
+    final result = await _authRepository.loginWithEmail(
+      email: email,
+      password: password,
+      role: role,
+    );
 
     return result.when(
       success: (user) {

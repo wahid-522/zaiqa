@@ -23,6 +23,27 @@ final restaurantOrdersProvider = FutureProvider.autoDispose<List<Order>>((ref) a
 class RestaurantOrdersTab extends ConsumerWidget {
   const RestaurantOrdersTab({super.key});
 
+  Future<void> _updateStatus(BuildContext context, WidgetRef ref, Order order, OrderStatus newStatus) async {
+    final repo = ref.read(orderRepositoryProvider);
+    final result = await repo.updateOrderStatus(order.id, newStatus);
+    result.when(
+      success: (updatedOrder) {
+        ref.invalidate(restaurantOrdersProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Order ${order.id} status updated to "${newStatus.displayName}"!'),
+            backgroundColor: const Color(0xFFC63D00),
+          ),
+        );
+      },
+      failure: (failure) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update status: ${failure.message}')),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ordersAsync = ref.watch(restaurantOrdersProvider);
@@ -87,6 +108,9 @@ class RestaurantOrdersTab extends ConsumerWidget {
                       final order = orders[index];
                       final isCancelled = order.status == OrderStatus.cancelled;
                       final isDelivered = order.status == OrderStatus.delivered;
+                      final isPlaced = order.status == OrderStatus.placed;
+                      final isPreparing = order.status == OrderStatus.preparing;
+                      final isOnTheWay = order.status == OrderStatus.outForDelivery;
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 14),
@@ -139,7 +163,9 @@ class RestaurantOrdersTab extends ConsumerWidget {
                                         ? const Color(0xFFFFEBEE)
                                         : isDelivered
                                             ? const Color(0xFFFFF0EC)
-                                            : const Color(0xFFE8F5E9),
+                                            : isPlaced
+                                                ? const Color(0xFFFFF8E1)
+                                                : const Color(0xFFE8F5E9),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Row(
@@ -150,13 +176,17 @@ class RestaurantOrdersTab extends ConsumerWidget {
                                             ? Icons.cancel_outlined
                                             : isDelivered
                                                 ? Icons.check_circle_outline
-                                                : Icons.local_shipping_outlined,
+                                                : isPlaced
+                                                    ? Icons.notifications_active_outlined
+                                                    : Icons.local_shipping_outlined,
                                         size: 13,
                                         color: isCancelled
                                             ? const Color(0xFFD32F2F)
                                             : isDelivered
                                                 ? const Color(0xFF8D4B38)
-                                                : const Color(0xFF2E7D32),
+                                                : isPlaced
+                                                    ? const Color(0xFFF57F17)
+                                                    : const Color(0xFF2E7D32),
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
@@ -168,7 +198,9 @@ class RestaurantOrdersTab extends ConsumerWidget {
                                               ? const Color(0xFFD32F2F)
                                               : isDelivered
                                                   ? const Color(0xFF8D4B38)
-                                                  : const Color(0xFF2E7D32),
+                                                  : isPlaced
+                                                      ? const Color(0xFFF57F17)
+                                                      : const Color(0xFF2E7D32),
                                         ),
                                       ),
                                     ],
@@ -219,22 +251,81 @@ class RestaurantOrdersTab extends ConsumerWidget {
 
                             const SizedBox(height: 12),
 
-                            // View Food Review Button
-                            OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: const Color(0xFFC63D00),
-                                side: const BorderSide(color: Color(0xFFC63D00)),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                minimumSize: const Size(double.infinity, 38),
+                            // Interactive Owner Order Actions (Accept / Preparing / Dispatch / Delivered)
+                            if (isPlaced) ...[
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFFC63D00),
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        minimumSize: const Size(0, 42),
+                                        elevation: 0,
+                                      ),
+                                      icon: const Icon(Icons.check_circle_outline, size: 18),
+                                      label: const Text('Accept & Start Preparing', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                      onPressed: () => _updateStatus(context, ref, order, OrderStatus.preparing),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    icon: const Icon(Icons.cancel_outlined, color: Colors.red),
+                                    tooltip: 'Reject Order',
+                                    onPressed: () => _updateStatus(context, ref, order, OrderStatus.cancelled),
+                                  ),
+                                ],
                               ),
-                              icon: const Icon(Icons.star_outline_rounded, size: 18),
-                              label: const Text('View Customer Review', style: TextStyle(fontWeight: FontWeight.bold)),
-                              onPressed: () {
-                                context.push(
-                                  RouteNames.viewReviewPath.replaceAll(':orderId', order.id),
-                                );
-                              },
-                            ),
+                            ] else if (isPreparing) ...[
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF2E7D32),
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    minimumSize: const Size(0, 42),
+                                    elevation: 0,
+                                  ),
+                                  icon: const Icon(Icons.local_shipping_outlined, size: 18),
+                                  label: const Text('Dispatch / Out for Delivery', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                  onPressed: () => _updateStatus(context, ref, order, OrderStatus.outForDelivery),
+                                ),
+                              ),
+                            ] else if (isOnTheWay) ...[
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: const Color(0xFF2E7D32),
+                                    side: const BorderSide(color: Color(0xFF2E7D32), width: 1.5),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    minimumSize: const Size(0, 42),
+                                  ),
+                                  icon: const Icon(Icons.done_all, size: 18),
+                                  label: const Text('Mark Order Delivered', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                  onPressed: () => _updateStatus(context, ref, order, OrderStatus.delivered),
+                                ),
+                              ),
+                            ] else ...[
+                              // View Food Review Button for Completed/Delivered Orders
+                              OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFFC63D00),
+                                  side: const BorderSide(color: Color(0xFFC63D00)),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  minimumSize: const Size(double.infinity, 38),
+                                ),
+                                icon: const Icon(Icons.star_outline_rounded, size: 18),
+                                label: const Text('View Customer Review', style: TextStyle(fontWeight: FontWeight.bold)),
+                                onPressed: () {
+                                  context.push(
+                                    RouteNames.viewReviewPath.replaceAll(':orderId', order.id),
+                                  );
+                                },
+                              ),
+                            ],
                           ],
                         ),
                       );

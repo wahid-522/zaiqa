@@ -415,9 +415,11 @@ class LocalMockDataSource {
   }
 
   // Auth
-  Future<UserModel> loginWithEmail(String email, String password) async {
+  Future<UserModel> loginWithEmail(String email, String password, {UserRole? role}) async {
     await Future.delayed(simulatedDelay);
-    final isOwner = email.toLowerCase().contains('restaurant') || email.toLowerCase().contains('owner');
+    final isOwner = role == UserRole.restaurantOwner ||
+        email.toLowerCase().contains('restaurant') ||
+        email.toLowerCase().contains('owner');
     _currentUser = _currentUser.copyWith(
       email: email,
       role: isOwner ? UserRole.restaurantOwner : UserRole.customer,

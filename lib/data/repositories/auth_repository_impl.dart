@@ -12,12 +12,13 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Result<AppFailure, UserProfile>> loginWithEmail({
     required String email,
     required String password,
+    UserRole? role,
   }) async {
     try {
       if (email.trim().isEmpty || password.trim().isEmpty) {
         return const Failure(AppFailure('Please enter both email and password'));
       }
-      final user = await _dataSource.loginWithEmail(email, password);
+      final user = await _dataSource.loginWithEmail(email, password, role: role);
       return Success(user);
     } catch (e) {
       return Failure(AppFailure('Login failed: $e'));
