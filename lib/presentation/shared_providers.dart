@@ -34,7 +34,7 @@ final googleDirectionsDataSourceProvider = Provider<GoogleDirectionsDataSource>(
 
 // Repository Providers
 final restaurantRepositoryProvider = Provider<RestaurantRepository>((ref) {
-  return RestaurantRepositoryImpl(ref.watch(localMockDataSourceProvider));
+  return RestaurantRepositoryImpl();
 });
 
 final cartRepositoryProvider = Provider<CartRepository>((ref) {

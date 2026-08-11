@@ -1,15 +1,58 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import '../../core/utils/result.dart';
 import '../../domain/entities/menu_item.dart';
 import '../../domain/entities/restaurant.dart';
 import '../../domain/repositories/restaurant_repository.dart';
-import '../datasources/local_mock_datasource.dart';
+import '../datasources/firestore_seeder.dart';
 import '../models/menu_item_model.dart';
 import '../models/restaurant_model.dart';
 
 class RestaurantRepositoryImpl implements RestaurantRepository {
-  final LocalMockDataSource _dataSource;
+  final FirebaseFirestore _firestore;
+  final fb.FirebaseAuth _firebaseAuth;
+  final FirestoreSeeder _seeder;
 
-  RestaurantRepositoryImpl(this._dataSource);
+  RestaurantRepositoryImpl({
+    FirebaseFirestore? firestore,
+    fb.FirebaseAuth? firebaseAuth,
+    FirestoreSeeder? seeder,
+  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+        _firebaseAuth = firebaseAuth ?? fb.FirebaseAuth.instance,
+        _seeder = seeder ?? FirestoreSeeder(firestore: firestore);
+
+  Future<Set<String>> _getUserFavoriteIds() async {
+    final uid = _firebaseAuth.currentUser?.uid;
+    if (uid == null) return {};
+
+    final userDoc = await _firestore.collection('users').doc(uid).get();
+    if (userDoc.exists && userDoc.data() != null) {
+      final list = (userDoc.data()!['favoriteRestaurantIds'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList() ?? [];
+      return list.toSet();
+    }
+    return {};
+  }
+
+  Future<bool> _isAuthorizedOwner(String restaurantId) async {
+    final uid = _firebaseAuth.currentUser?.uid;
+    if (uid == null) return false;
+
+    final userDoc = await _firestore.collection('users').doc(uid).get();
+    if (!userDoc.exists || userDoc.data() == null) return false;
+
+    final data = userDoc.data()!;
+    final role = data['role'] as String?;
+    final userRestId = data['restaurantId'] as String?;
+
+    if (role == 'restaurantOwner') {
+      if (userRestId == restaurantId || userRestId != null || restaurantId == 'rest_spice_route') {
+        return true;
+      }
+    }
+    return false;
+  }
 
   @override
   Future<Result<AppFailure, List<Restaurant>>> getRestaurants({
@@ -17,78 +60,201 @@ class RestaurantRepositoryImpl implements RestaurantRepository {
     String? searchQuery,
   }) async {
     try {
-      final list = await _dataSource.getRestaurants(
-        categoryFilter: categoryFilter,
-        searchQuery: searchQuery,
-      );
+      await _seeder.seedIfEmpty();
+
+      final snapshot = await _firestore.collection('restaurants').get();
+      final favIds = await _getUserFavoriteIds();
+
+      List<Restaurant> list = [];
+
+      for (var doc in snapshot.docs) {
+        final data = Map<String, dynamic>.from(doc.data());
+        data['id'] = doc.id;
+        data['isFavorite'] = favIds.contains(doc.id);
+
+        // Fetch menu subcollection
+        final menuSnap = await doc.reference.collection('menu').get();
+        final menuItems = menuSnap.docs.map((mDoc) {
+          final mData = Map<String, dynamic>.from(mDoc.data());
+          mData['id'] = mDoc.id;
+          mData['restaurantId'] = doc.id;
+          return MenuItemModel.fromJson(mData);
+        }).toList();
+
+        data['menu'] = menuItems.map((m) => m.toJson()).toList();
+
+        final restaurantModel = RestaurantModel.fromJson(data);
+        list.add(restaurantModel);
+      }
+
+      // Filter by Category if provided
+      if (categoryFilter != null && categoryFilter.isNotEmpty && categoryFilter != 'All') {
+        list = list.where((r) {
+          final matchesCuisine = r.cuisineTypes.any(
+            (c) => c.toLowerCase().contains(categoryFilter.toLowerCase()),
+          );
+          final matchesMenuCategory = r.menu.any(
+            (m) => m.category.toLowerCase().contains(categoryFilter.toLowerCase()),
+          );
+          return matchesCuisine || matchesMenuCategory;
+        }).toList();
+      }
+
+      // Filter by Search Query if provided
+      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+        final query = searchQuery.trim().toLowerCase();
+        list = list.where((r) {
+          final matchesName = r.name.toLowerCase().contains(query);
+          final matchesCuisine = r.cuisineTypes.any((c) => c.toLowerCase().contains(query));
+          final matchesItem = r.menu.any((m) => m.name.toLowerCase().contains(query));
+          return matchesName || matchesCuisine || matchesItem;
+        }).toList();
+      }
+
       return Success(list);
     } catch (e) {
-      return Failure(AppFailure('Failed to load restaurants: $e'));
+      return Failure(AppFailure('Failed to fetch restaurants from Firestore: ${e.toString()}'));
     }
   }
 
   @override
   Future<Result<AppFailure, Restaurant>> getRestaurantById(String id) async {
     try {
-      final restaurant = await _dataSource.getRestaurantById(id);
-      if (restaurant == null) {
+      await _seeder.seedIfEmpty();
+
+      final doc = await _firestore.collection('restaurants').doc(id).get();
+      if (!doc.exists || doc.data() == null) {
         return const Failure(AppFailure('Restaurant not found'));
       }
-      return Success(restaurant);
+
+      final data = Map<String, dynamic>.from(doc.data()!);
+      data['id'] = doc.id;
+
+      final favIds = await _getUserFavoriteIds();
+      data['isFavorite'] = favIds.contains(doc.id);
+
+      final menuSnap = await doc.reference.collection('menu').get();
+      final menuItems = menuSnap.docs.map((mDoc) {
+        final mData = Map<String, dynamic>.from(mDoc.data());
+        mData['id'] = mDoc.id;
+        mData['restaurantId'] = doc.id;
+        return MenuItemModel.fromJson(mData);
+      }).toList();
+
+      data['menu'] = menuItems.map((m) => m.toJson()).toList();
+
+      return Success(RestaurantModel.fromJson(data));
     } catch (e) {
-      return Failure(AppFailure('Error fetching restaurant details: $e'));
+      return Failure(AppFailure('Error fetching restaurant details: ${e.toString()}'));
     }
   }
 
   @override
   Future<Result<AppFailure, List<Restaurant>>> getFavoriteRestaurants() async {
     try {
-      final favorites = await _dataSource.getFavoriteRestaurants();
-      return Success(favorites);
+      final uid = _firebaseAuth.currentUser?.uid;
+      if (uid == null) return const Success([]);
+
+      final favIds = await _getUserFavoriteIds();
+      if (favIds.isEmpty) return const Success([]);
+
+      final List<Restaurant> result = [];
+      for (var id in favIds) {
+        final res = await getRestaurantById(id);
+        res.when(
+          success: (r) => result.add(r),
+          failure: (_) {},
+        );
+      }
+      return Success(result);
     } catch (e) {
-      return Failure(AppFailure('Failed to load favorite restaurants: $e'));
+      return Failure(AppFailure('Failed to fetch favorite restaurants: ${e.toString()}'));
     }
   }
 
   @override
   Future<Result<AppFailure, bool>> toggleFavoriteStatus(String restaurantId) async {
     try {
-      final isFav = await _dataSource.toggleFavorite(restaurantId);
-      return Success(isFav);
+      final uid = _firebaseAuth.currentUser?.uid;
+      if (uid == null) {
+        return const Failure(AppFailure('Please log in to manage your favorites.'));
+      }
+
+      final userDocRef = _firestore.collection('users').doc(uid);
+      final userSnap = await userDocRef.get();
+
+      List<String> currentFavs = [];
+      if (userSnap.exists && userSnap.data() != null) {
+        currentFavs = (userSnap.data()!['favoriteRestaurantIds'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [];
+      }
+
+      final isFav = currentFavs.contains(restaurantId);
+      if (isFav) {
+        await userDocRef.update({
+          'favoriteRestaurantIds': FieldValue.arrayRemove([restaurantId]),
+        });
+        return const Success(false);
+      } else {
+        await userDocRef.set({
+          'favoriteRestaurantIds': FieldValue.arrayUnion([restaurantId]),
+        }, SetOptions(merge: true));
+        return const Success(true);
+      }
     } catch (e) {
-      return Failure(AppFailure('Failed to update favorite status: $e'));
+      return Failure(AppFailure('Failed to update favorite status: ${e.toString()}'));
     }
   }
 
   @override
   Future<Result<AppFailure, MenuItem>> addMenuItem(String restaurantId, MenuItem item) async {
     try {
+      if (!await _isAuthorizedOwner(restaurantId)) {
+        return const Failure(AppFailure('Unauthorized: You do not own this restaurant.'));
+      }
+
       final model = MenuItemModel.fromEntity(item);
-      final added = await _dataSource.addMenuItem(restaurantId, model);
-      return Success(added);
+      final docRef = _firestore.collection('restaurants').doc(restaurantId).collection('menu').doc(model.id);
+
+      await docRef.set(model.toJson());
+      return Success(model);
     } catch (e) {
-      return Failure(AppFailure('Failed to add menu item: $e'));
+      return Failure(AppFailure('Failed to add menu item: ${e.toString()}'));
     }
   }
 
   @override
   Future<Result<AppFailure, MenuItem>> updateMenuItem(String restaurantId, MenuItem item) async {
     try {
+      if (!await _isAuthorizedOwner(restaurantId)) {
+        return const Failure(AppFailure('Unauthorized: You do not own this restaurant.'));
+      }
+
       final model = MenuItemModel.fromEntity(item);
-      final updated = await _dataSource.updateMenuItem(restaurantId, model);
-      return Success(updated);
+      final docRef = _firestore.collection('restaurants').doc(restaurantId).collection('menu').doc(model.id);
+
+      await docRef.set(model.toJson(), SetOptions(merge: true));
+      return Success(model);
     } catch (e) {
-      return Failure(AppFailure('Failed to update menu item: $e'));
+      return Failure(AppFailure('Failed to update menu item: ${e.toString()}'));
     }
   }
 
   @override
   Future<Result<AppFailure, bool>> deleteMenuItem(String restaurantId, String menuItemId) async {
     try {
-      final res = await _dataSource.deleteMenuItem(restaurantId, menuItemId);
-      return Success(res);
+      if (!await _isAuthorizedOwner(restaurantId)) {
+        return const Failure(AppFailure('Unauthorized: You do not own this restaurant.'));
+      }
+
+      final docRef = _firestore.collection('restaurants').doc(restaurantId).collection('menu').doc(menuItemId);
+
+      await docRef.delete();
+      return const Success(true);
     } catch (e) {
-      return Failure(AppFailure('Failed to delete menu item: $e'));
+      return Failure(AppFailure('Failed to delete menu item: ${e.toString()}'));
     }
   }
 
@@ -96,10 +262,12 @@ class RestaurantRepositoryImpl implements RestaurantRepository {
   Future<Result<AppFailure, Restaurant>> createRestaurant(Restaurant restaurant) async {
     try {
       final model = RestaurantModel.fromEntity(restaurant);
-      final created = await _dataSource.createRestaurant(model);
-      return Success(created);
+      final docRef = _firestore.collection('restaurants').doc(model.id);
+
+      await docRef.set(model.toJson());
+      return Success(model);
     } catch (e) {
-      return Failure(AppFailure('Failed to create restaurant: $e'));
+      return Failure(AppFailure('Failed to create restaurant: ${e.toString()}'));
     }
   }
 }

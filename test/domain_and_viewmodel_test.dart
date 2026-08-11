@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zaiqa/data/datasources/google_directions_datasource.dart';
-import 'package:zaiqa/data/datasources/local_mock_datasource.dart';
 import 'package:zaiqa/data/repositories/cart_repository_impl.dart';
 import 'package:zaiqa/data/repositories/restaurant_repository_impl.dart';
 import 'package:zaiqa/domain/entities/delivery_route.dart';
@@ -12,14 +11,12 @@ import 'package:zaiqa/domain/usecases/manage_menu_usecase.dart';
 
 void main() {
   group('Clean Architecture - Domain & Repository Tests', () {
-    late LocalMockDataSource dataSource;
     late RestaurantRepositoryImpl restaurantRepo;
     late GetRestaurantsUseCase getRestaurantsUseCase;
     late ManageMenuUseCase manageMenuUseCase;
 
     setUp(() {
-      dataSource = LocalMockDataSource();
-      restaurantRepo = RestaurantRepositoryImpl(dataSource);
+      restaurantRepo = RestaurantRepositoryImpl();
       getRestaurantsUseCase = GetRestaurantsUseCase(restaurantRepo);
       manageMenuUseCase = ManageMenuUseCase(restaurantRepo);
     });
