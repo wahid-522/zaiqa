@@ -19,9 +19,13 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
       'imageUrl': 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=800&auto=format&fit=crop&q=80',
       'dateStr': 'Oct 12, 2023',
       'itemCount': 3,
-      'price': 950.0,
+      'price': 42.50,
+      'currency': '\$',
       'status': 'Delivered',
       'isCancelled': false,
+      'hasReview': false,
+      'reviewRating': 0,
+      'reviewComment': '',
     },
     {
       'id': 'ZQ-84918',
@@ -29,9 +33,13 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
       'imageUrl': 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&auto=format&fit=crop&q=80',
       'dateStr': 'Sep 28, 2023',
       'itemCount': 1,
-      'price': 650.0,
+      'price': 28.00,
+      'currency': '\$',
       'status': 'Delivered',
       'isCancelled': false,
+      'hasReview': true,
+      'reviewRating': 5,
+      'reviewComment': 'Authentic wood-fired crust with super fresh mozzarella!',
     },
     {
       'id': 'ZQ-84905',
@@ -39,11 +47,250 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
       'imageUrl': 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800&auto=format&fit=crop&q=80',
       'dateStr': 'Sep 15, 2023',
       'itemCount': 2,
-      'price': 820.0,
+      'price': 34.20,
+      'currency': '\$',
       'status': 'Cancelled',
       'isCancelled': true,
+      'hasReview': false,
+      'reviewRating': 0,
+      'reviewComment': '',
     },
   ];
+
+  void _showAddReviewBottomSheet(BuildContext context, Map<String, dynamic> order) {
+    int selectedRating = 5;
+    final textController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Review ${order['restaurantName']}',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2C221E),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Share your taste experience with others',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Rating Stars Row
+                  Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (starIndex) {
+                        final starValue = starIndex + 1;
+                        return IconButton(
+                          iconSize: 36,
+                          icon: Icon(
+                            starValue <= selectedRating ? Icons.star_rounded : Icons.star_outline_rounded,
+                            color: const Color(0xFFC63D00),
+                          ),
+                          onPressed: () {
+                            setModalState(() {
+                              selectedRating = starValue;
+                            });
+                          },
+                        );
+                      }),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Review Comment Field
+                  TextField(
+                    controller: textController,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      hintText: 'Write your thoughts on food quality, packing, and speed...',
+                      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                      filled: true,
+                      fillColor: const Color(0xFFFCF7F4),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Submit Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFC63D00),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          order['hasReview'] = true;
+                          order['reviewRating'] = selectedRating;
+                          order['reviewComment'] = textController.text.trim();
+                        });
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Thank you! Your review has been published.')),
+                        );
+                      },
+                      child: const Text(
+                        'Submit Review',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showViewReviewBottomSheet(BuildContext context, Map<String, dynamic> order) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Your Review',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2C221E),
+                    ),
+                  ),
+                  Row(
+                    children: List.generate(5, (index) {
+                      final starVal = index + 1;
+                      return Icon(
+                        starVal <= (order['reviewRating'] as int)
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
+                        color: const Color(0xFFC63D00),
+                        size: 20,
+                      );
+                    }),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                order['restaurantName'] as String,
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade600, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFCF7F4),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  (order['reviewComment'] as String).isEmpty
+                      ? 'No written comment provided.'
+                      : order['reviewComment'] as String,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF2C221E),
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFF0EC),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    'Close',
+                    style: TextStyle(
+                      color: Color(0xFF8D4B38),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -168,15 +415,17 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
                   final dateStr = order['dateStr'] as String;
                   final itemCount = order['itemCount'] as int;
                   final price = order['price'] as double;
+                  final currency = (order['currency'] ?? '\$') as String;
                   final status = order['status'] as String;
                   final isCancelled = order['isCancelled'] as bool;
+                  final hasReview = order['hasReview'] as bool;
 
                   return Container(
-                    margin: const EdgeInsets.only(bottom: 14),
+                    margin: const EdgeInsets.only(bottom: 16),
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.04),
@@ -230,7 +479,7 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    'Rs. ${price.toInt()}',
+                                    '$currency${price.toStringAsFixed(2)}',
                                     style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
@@ -273,39 +522,17 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
 
                         const SizedBox(height: 14),
 
-                        // Bottom Actions Row
+                        // Bottom Actions Row matching exact user design reference image
                         isCancelled
-                            ? SizedBox(
-                                width: double.infinity,
-                                height: 42,
-                                child: TextButton(
-                                  style: TextButton.styleFrom(
-                                    backgroundColor: const Color(0xFFFFF0EC),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  onPressed: () {
-                                    context.push('/order-tracking/$orderId');
-                                  },
-                                  child: const Text(
-                                    'View Details',
-                                    style: TextStyle(
-                                      color: Color(0xFF8D4B38),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ),
-                              )
-                            : Row(
+                            ? Row(
                                 children: [
+                                  // 1. Reorder Terracotta Button
                                   Expanded(
                                     child: SizedBox(
                                       height: 42,
                                       child: ElevatedButton(
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(0xFFC63D00),
+                                          backgroundColor: const Color(0xFF8B5A47),
                                           foregroundColor: Colors.white,
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(12),
@@ -329,6 +556,100 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
                                     ),
                                   ),
                                   const SizedBox(width: 10),
+
+                                  // 2. View Details Soft Peach Button
+                                  Expanded(
+                                    child: SizedBox(
+                                      height: 42,
+                                      child: TextButton(
+                                        style: TextButton.styleFrom(
+                                          backgroundColor: const Color(0xFFFFF0EC),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                        ),
+                                        onPressed: () {
+                                          context.push('/order-tracking/$orderId');
+                                        },
+                                        child: const Text(
+                                          'View Details',
+                                          style: TextStyle(
+                                            color: Color(0xFF8D4B38),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Row(
+                                children: [
+                                  // 1. Reorder Warm Brown Button
+                                  Expanded(
+                                    child: SizedBox(
+                                      height: 42,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF8B5A47),
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          elevation: 0,
+                                        ),
+                                        onPressed: () {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(content: Text('Reordering from $restName...')),
+                                          );
+                                          context.push(RouteNames.cartPath);
+                                        },
+                                        child: const Text(
+                                          'Reorder',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+
+                                  // 2. Add Review / View Review Warm Orange-Red Button
+                                  Expanded(
+                                    child: SizedBox(
+                                      height: 42,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFFC63D00),
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          elevation: 0,
+                                        ),
+                                        onPressed: () {
+                                          if (hasReview) {
+                                            _showViewReviewBottomSheet(context, order);
+                                          } else {
+                                            _showAddReviewBottomSheet(context, order);
+                                          }
+                                        },
+                                        child: Text(
+                                          hasReview ? 'View Review' : 'Add Review',
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+
+                                  // 3. Receipt Icon Button
                                   GestureDetector(
                                     onTap: () {
                                       context.push('/order-tracking/$orderId');
