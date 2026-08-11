@@ -30,11 +30,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _onLogin() async {
     if (_formKey.currentState?.validate() ?? false) {
       final success = await ref.read(authViewModelProvider.notifier).login(
-            email: _emailController.text,
-            password: _passwordController.text,
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
           );
       if (success && mounted) {
-        context.go(RouteNames.homePath);
+        final currentUser = ref.read(authViewModelProvider).user;
+        if (currentUser?.isRestaurantOwner ?? false) {
+          context.go(RouteNames.restaurantMenuManagementPath);
+        } else {
+          context.go(RouteNames.homePath);
+        }
       }
     }
   }
@@ -44,6 +49,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authViewModelProvider);
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFCF7F4),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -55,20 +61,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // App Brand Logo & Name
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primaryLight,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'ذ',
-                        style: TextStyle(
-                          fontSize: 42,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                  Center(
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primaryLight,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'ذ',
+                          style: TextStyle(
+                            fontSize: 42,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
                     ),
@@ -87,7 +95,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                  const SizedBox(height: 36),
+                  const SizedBox(height: 28),
+
+                  // Quick Account Role Switch Demo Chips
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ChoiceChip(
+                        avatar: const Icon(Icons.person_outline, size: 16, color: Color(0xFFC63D00)),
+                        label: const Text('Customer Demo'),
+                        selected: !_emailController.text.toLowerCase().contains('owner') &&
+                            !_emailController.text.toLowerCase().contains('restaurant'),
+                        selectedColor: const Color(0xFFFFF0EC),
+                        backgroundColor: Colors.white,
+                        onSelected: (val) {
+                          if (val) {
+                            setState(() {
+                              _emailController.text = 'hamza@zaiqa.app';
+                              _passwordController.text = 'password123';
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 10),
+                      ChoiceChip(
+                        avatar: const Icon(Icons.storefront_outlined, size: 16, color: Color(0xFFC63D00)),
+                        label: const Text('Restaurant Owner Demo'),
+                        selected: _emailController.text.toLowerCase().contains('owner') ||
+                            _emailController.text.toLowerCase().contains('restaurant'),
+                        selectedColor: const Color(0xFFFFF0EC),
+                        backgroundColor: Colors.white,
+                        onSelected: (val) {
+                          if (val) {
+                            setState(() {
+                              _emailController.text = 'owner@zaiqa.app';
+                              _passwordController.text = 'password123';
+                            });
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
 
                   // Error Banner
                   if (authState.errorMessage != null) ...[

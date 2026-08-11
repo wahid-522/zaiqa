@@ -417,16 +417,12 @@ class LocalMockDataSource {
   // Auth
   Future<UserModel> loginWithEmail(String email, String password) async {
     await Future.delayed(simulatedDelay);
-    // If logging in with restaurant owner email demo, assign restaurantOwner role & restaurantId
-    if (email.toLowerCase().contains('restaurant') || email.toLowerCase().contains('owner')) {
-      _currentUser = _currentUser.copyWith(
-        email: email,
-        role: UserRole.restaurantOwner,
-        restaurantId: 'rest_spice_route',
-      );
-    } else {
-      _currentUser = _currentUser.copyWith(email: email);
-    }
+    final isOwner = email.toLowerCase().contains('restaurant') || email.toLowerCase().contains('owner');
+    _currentUser = _currentUser.copyWith(
+      email: email,
+      role: isOwner ? UserRole.restaurantOwner : UserRole.customer,
+      restaurantId: isOwner ? (_currentUser.restaurantId ?? 'rest_spice_route') : null,
+    );
     return _currentUser;
   }
 
