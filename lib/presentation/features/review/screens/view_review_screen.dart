@@ -11,17 +11,19 @@ class ViewReviewScreen extends ConsumerWidget {
   final int rating;
   final String experienceTag;
   final String reviewText;
+  final String? foodPhotoUrl;
 
   const ViewReviewScreen({
     super.key,
     required this.orderId,
-    this.restaurantName = 'Osteria Morini',
-    this.imageUrl = 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&auto=format&fit=crop&q=80',
-    this.dateStr = 'Oct 24, 2023',
+    this.restaurantName = 'The Spice Route',
+    this.imageUrl = 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=800&auto=format&fit=crop&q=80',
+    this.dateStr = 'Today, 2:15 PM',
     this.rating = 5,
     this.experienceTag = 'Excellent Experience',
     this.reviewText =
-        '"Absolutely phenomenal. The pasta was perfectly al dente, and the truffle cream sauce was rich without being overwhelming. Packaging kept everything piping hot. This has quickly become my go-to spot for a comforting, high-quality dinner at home."',
+        '"Absolutely phenomenal! The chicken tikka masala was piping hot, fragrant, and perfectly spiced. Packaging was intact and delivery was super quick. Will definitely order again!"',
+    this.foodPhotoUrl = 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800&auto=format&fit=crop&q=80',
   });
 
   @override
@@ -37,7 +39,7 @@ class ViewReviewScreen extends ConsumerWidget {
         ),
         centerTitle: true,
         title: Text(
-          'Your Review',
+          'Customer Review',
           style: GoogleFonts.outfit(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -73,12 +75,12 @@ class ViewReviewScreen extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(50),
                         child: Image.network(
                           imageUrl,
-                          width: 100,
-                          height: 100,
+                          width: 90,
+                          height: 90,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) => Container(
-                            width: 100,
-                            height: 100,
+                            width: 90,
+                            height: 90,
                             color: const Color(0xFFFFF0EC),
                             child: const Icon(Icons.restaurant, color: Color(0xFFC63D00), size: 44),
                           ),
@@ -86,7 +88,7 @@ class ViewReviewScreen extends ConsumerWidget {
                       ),
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
                     // Restaurant Name
                     Text(
@@ -116,7 +118,7 @@ class ViewReviewScreen extends ConsumerWidget {
                       ],
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
 
                     // 5 Filled Rating Stars Row
                     Row(
@@ -152,12 +154,12 @@ class ViewReviewScreen extends ConsumerWidget {
                       ),
                     ),
 
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 24),
 
                     // Review Quote Card Container
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(22),
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
@@ -202,6 +204,63 @@ class ViewReviewScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
+
+                    // Customer Attached Food Photo Card Section
+                    if (foodPhotoUrl != null && foodPhotoUrl!.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: const [
+                                Icon(Icons.photo_camera_outlined, size: 18, color: Color(0xFFC63D00)),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Customer Food Photo',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF2C221E),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: Image.network(
+                                foodPhotoUrl!,
+                                height: 180,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Container(
+                                  height: 120,
+                                  color: const Color(0xFFFFF0EC),
+                                  child: const Center(
+                                    child: Icon(Icons.fastfood, color: Color(0xFFC63D00), size: 36),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),

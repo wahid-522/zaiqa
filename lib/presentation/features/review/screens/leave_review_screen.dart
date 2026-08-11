@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../shared/widgets/zaiqa_image_picker_tile.dart';
 
 class LeaveReviewScreen extends ConsumerStatefulWidget {
   final String orderId;
@@ -22,8 +23,9 @@ class LeaveReviewScreen extends ConsumerStatefulWidget {
 }
 
 class _LeaveReviewScreenState extends ConsumerState<LeaveReviewScreen> {
-  int _selectedRating = 0;
+  int _selectedRating = 5;
   final TextEditingController _commentController = TextEditingController();
+  String? _foodPhotoPath;
 
   @override
   void dispose() {
@@ -123,7 +125,7 @@ class _LeaveReviewScreenState extends ConsumerState<LeaveReviewScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 36),
+                    const SizedBox(height: 28),
 
                     // Rating Question Heading
                     const Text(
@@ -135,7 +137,7 @@ class _LeaveReviewScreenState extends ConsumerState<LeaveReviewScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
                     // 5 Outlined / Filled Star Buttons Row
                     Row(
@@ -162,7 +164,7 @@ class _LeaveReviewScreenState extends ConsumerState<LeaveReviewScreen> {
                       }),
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
 
                     // Review Text Box Container
                     Container(
@@ -174,7 +176,7 @@ class _LeaveReviewScreenState extends ConsumerState<LeaveReviewScreen> {
                       ),
                       child: TextField(
                         controller: _commentController,
-                        maxLines: 4,
+                        maxLines: 3,
                         style: const TextStyle(fontSize: 14, color: Color(0xFF2C221E)),
                         decoration: InputDecoration(
                           hintText: 'Tell us about your experience (optional)...',
@@ -186,6 +188,20 @@ class _LeaveReviewScreenState extends ConsumerState<LeaveReviewScreen> {
                         ),
                       ),
                     ),
+
+                    const SizedBox(height: 20),
+
+                    // Add Picture of the Food Option (Camera or Gallery/PC)
+                    ZaiqaImagePickerTile(
+                      label: 'Add Photo of your Food (Optional)',
+                      initialImageUrl: _foodPhotoPath,
+                      onImageSelected: (path) {
+                        setState(() {
+                          _foodPhotoPath = path;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
@@ -211,7 +227,7 @@ class _LeaveReviewScreenState extends ConsumerState<LeaveReviewScreen> {
                   ),
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Thank you! Your review has been submitted.')),
+                      const SnackBar(content: Text('Thank you! Your review and food photo have been submitted.')),
                     );
                     context.pop();
                   },
