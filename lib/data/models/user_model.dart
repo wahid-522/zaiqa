@@ -6,16 +6,23 @@ class UserModel extends UserProfile {
     required super.name,
     required super.email,
     required super.phone,
+    super.role,
+    super.restaurantId,
     super.savedAddresses,
     super.favoriteRestaurantIds,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    final roleStr = json['role'] as String? ?? 'customer';
+    final userRole = roleStr == 'restaurantOwner' ? UserRole.restaurantOwner : UserRole.customer;
+
     return UserModel(
       id: json['id'] as String,
       name: json['name'] as String,
       email: json['email'] as String,
       phone: json['phone'] as String,
+      role: userRole,
+      restaurantId: json['restaurantId'] as String?,
       savedAddresses: (json['savedAddresses'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
       favoriteRestaurantIds: (json['favoriteRestaurantIds'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
     );
@@ -27,6 +34,8 @@ class UserModel extends UserProfile {
       'name': name,
       'email': email,
       'phone': phone,
+      'role': role == UserRole.restaurantOwner ? 'restaurantOwner' : 'customer',
+      'restaurantId': restaurantId,
       'savedAddresses': savedAddresses,
       'favoriteRestaurantIds': favoriteRestaurantIds,
     };
@@ -38,6 +47,8 @@ class UserModel extends UserProfile {
       name: entity.name,
       email: entity.email,
       phone: entity.phone,
+      role: entity.role,
+      restaurantId: entity.restaurantId,
       savedAddresses: entity.savedAddresses,
       favoriteRestaurantIds: entity.favoriteRestaurantIds,
     );
@@ -49,6 +60,8 @@ class UserModel extends UserProfile {
     String? name,
     String? email,
     String? phone,
+    UserRole? role,
+    String? restaurantId,
     List<String>? savedAddresses,
     List<String>? favoriteRestaurantIds,
   }) {
@@ -57,6 +70,8 @@ class UserModel extends UserProfile {
       name: name ?? this.name,
       email: email ?? this.email,
       phone: phone ?? this.phone,
+      role: role ?? this.role,
+      restaurantId: restaurantId ?? this.restaurantId,
       savedAddresses: savedAddresses ?? this.savedAddresses,
       favoriteRestaurantIds: favoriteRestaurantIds ?? this.favoriteRestaurantIds,
     );

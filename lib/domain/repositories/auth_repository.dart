@@ -12,6 +12,7 @@ abstract class AuthRepository {
     required String email,
     required String phone,
     required String password,
+    UserRole role = UserRole.customer,
   });
 
   Future<Result<AppFailure, UserProfile?>> getCurrentUser();

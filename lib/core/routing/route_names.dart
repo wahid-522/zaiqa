@@ -46,4 +46,10 @@ class RouteNames {
 
   static const String viewReview = 'viewReview';
   static const String viewReviewPath = '/view-review/:orderId';
+
+  static const String restaurantMenuManagement = 'restaurantMenuManagement';
+  static const String restaurantMenuManagementPath = '/restaurant-owner/menu';
+
+  static const String restaurantOnboarding = 'restaurantOnboarding';
+  static const String restaurantOnboardingPath = '/restaurant-owner/onboarding';
 }

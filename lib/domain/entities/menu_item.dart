@@ -28,6 +28,34 @@ class MenuItem extends Equatable {
     this.tags = const [],
   });
 
+  MenuItem copyWith({
+    String? id,
+    String? restaurantId,
+    String? name,
+    String? description,
+    double? price,
+    String? imageUrl,
+    String? category,
+    bool? isAvailable,
+    bool? isSpicy,
+    bool? isVegetarian,
+    List<String>? tags,
+  }) {
+    return MenuItem(
+      id: id ?? this.id,
+      restaurantId: restaurantId ?? this.restaurantId,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      price: price ?? this.price,
+      imageUrl: imageUrl ?? this.imageUrl,
+      category: category ?? this.category,
+      isAvailable: isAvailable ?? this.isAvailable,
+      isSpicy: isSpicy ?? this.isSpicy,
+      isVegetarian: isVegetarian ?? this.isVegetarian,
+      tags: tags ?? this.tags,
+    );
+  }
+
   @override
   List<Object?> get props => [
         id,

@@ -30,12 +30,13 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String phone,
     required String password,
+    UserRole role = UserRole.customer,
   }) async {
     try {
       if (name.trim().isEmpty || email.trim().isEmpty || password.trim().isEmpty) {
         return const Failure(AppFailure('Please fill in all required fields'));
       }
-      final user = await _dataSource.signupWithEmail(name, email, phone, password);
+      final user = await _dataSource.signupWithEmail(name, email, phone, password, role: role);
       return Success(user);
     } catch (e) {
       return Failure(AppFailure('Signup failed: $e'));

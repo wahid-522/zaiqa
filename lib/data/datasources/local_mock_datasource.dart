@@ -3,6 +3,7 @@ import '../models/menu_item_model.dart';
 import '../models/user_model.dart';
 import '../models/order_model.dart';
 import '../../domain/entities/order.dart';
+import '../../domain/entities/user_profile.dart';
 
 /// DEVELOPMENT MOCK DATASET
 /// This file provides clearly-labeled mock data for Zaiqa during local development.
@@ -328,20 +329,87 @@ class LocalMockDataSource {
     return null;
   }
 
+  // Menu & Restaurant Management (Restaurant Owner)
+  Future<MenuItemModel> addMenuItem(String restaurantId, MenuItemModel item) async {
+    await Future.delayed(simulatedDelay);
+    final restIndex = _restaurants.indexWhere((r) => r.id == restaurantId);
+    if (restIndex != -1) {
+      final updatedMenu = List<MenuItemModel>.from(_restaurants[restIndex].menu)..add(item);
+      final updatedRest = RestaurantModel.fromEntity(_restaurants[restIndex].copyWith(menu: updatedMenu));
+      _restaurants[restIndex] = updatedRest;
+      return item;
+    }
+    throw Exception('Restaurant not found');
+  }
+
+  Future<MenuItemModel> updateMenuItem(String restaurantId, MenuItemModel item) async {
+    await Future.delayed(simulatedDelay);
+    final restIndex = _restaurants.indexWhere((r) => r.id == restaurantId);
+    if (restIndex != -1) {
+      final currentMenu = List<MenuItemModel>.from(_restaurants[restIndex].menu);
+      final itemIndex = currentMenu.indexWhere((m) => m.id == item.id);
+      if (itemIndex != -1) {
+        currentMenu[itemIndex] = item;
+        final updatedRest = RestaurantModel.fromEntity(_restaurants[restIndex].copyWith(menu: currentMenu));
+        _restaurants[restIndex] = updatedRest;
+        return item;
+      }
+    }
+    throw Exception('Menu item not found');
+  }
+
+  Future<bool> deleteMenuItem(String restaurantId, String menuItemId) async {
+    await Future.delayed(simulatedDelay);
+    final restIndex = _restaurants.indexWhere((r) => r.id == restaurantId);
+    if (restIndex != -1) {
+      final updatedMenu = List<MenuItemModel>.from(_restaurants[restIndex].menu)
+        ..removeWhere((m) => m.id == menuItemId);
+      final updatedRest = RestaurantModel.fromEntity(_restaurants[restIndex].copyWith(menu: updatedMenu));
+      _restaurants[restIndex] = updatedRest;
+      return true;
+    }
+    return false;
+  }
+
+  Future<RestaurantModel> createRestaurant(RestaurantModel restaurant) async {
+    await Future.delayed(simulatedDelay);
+    _restaurants.add(restaurant);
+    if (_currentUser.role == UserRole.restaurantOwner) {
+      _currentUser = _currentUser.copyWith(restaurantId: restaurant.id);
+    }
+    return restaurant;
+  }
+
   // Auth
   Future<UserModel> loginWithEmail(String email, String password) async {
     await Future.delayed(simulatedDelay);
-    _currentUser = _currentUser.copyWith(email: email);
+    // If logging in with restaurant owner email demo, assign restaurantOwner role & restaurantId
+    if (email.toLowerCase().contains('restaurant') || email.toLowerCase().contains('owner')) {
+      _currentUser = _currentUser.copyWith(
+        email: email,
+        role: UserRole.restaurantOwner,
+        restaurantId: 'rest_spice_route',
+      );
+    } else {
+      _currentUser = _currentUser.copyWith(email: email);
+    }
     return _currentUser;
   }
 
-  Future<UserModel> signupWithEmail(String name, String email, String phone, String password) async {
+  Future<UserModel> signupWithEmail(
+    String name,
+    String email,
+    String phone,
+    String password, {
+    UserRole role = UserRole.customer,
+  }) async {
     await Future.delayed(simulatedDelay);
     _currentUser = UserModel(
       id: 'user_${DateTime.now().millisecondsSinceEpoch}',
       name: name,
       email: email,
       phone: phone,
+      role: role,
       savedAddresses: const ['Current Location, DHA Phase 5, Karachi'],
       favoriteRestaurantIds: const [],
     );

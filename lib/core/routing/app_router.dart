@@ -15,6 +15,8 @@ import '../../presentation/features/main_navigation/screens/main_navigation_scre
 import '../../presentation/features/order_tracking/screens/order_tracking_screen.dart';
 import '../../presentation/features/profile/screens/profile_screen.dart';
 import '../../presentation/features/restaurant_detail/screens/restaurant_detail_screen.dart';
+import '../../presentation/features/restaurant_owner/screens/restaurant_menu_management_screen.dart';
+import '../../presentation/features/restaurant_owner/screens/restaurant_onboarding_screen.dart';
 import '../../presentation/features/review/screens/leave_review_screen.dart';
 import '../../presentation/features/review/screens/view_review_screen.dart';
 import 'route_names.dart';
@@ -26,6 +28,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: RouteNames.splashPath,
     redirect: (BuildContext context, GoRouterState state) {
       final isAuth = authState.isAuthenticated;
+      final user = authState.user;
       final isSplash = state.matchedLocation == RouteNames.splashPath;
       final isLoggingIn = state.matchedLocation == RouteNames.loginPath ||
           state.matchedLocation == RouteNames.signupPath;
@@ -33,12 +36,40 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (isSplash) {
         return null;
       }
+
       if (!isAuth && !isLoggingIn) {
         return RouteNames.loginPath;
       }
-      if (isAuth && isLoggingIn) {
-        return RouteNames.homePath;
+
+      if (isAuth) {
+        final isRestaurantOwner = user?.isRestaurantOwner ?? false;
+        final hasRestaurant = user?.restaurantId != null && user!.restaurantId!.isNotEmpty;
+        final isOwnerRoute = state.matchedLocation.startsWith('/restaurant-owner');
+
+        // Role-based redirect upon login/signup
+        if (isLoggingIn) {
+          if (isRestaurantOwner) {
+            return hasRestaurant
+                ? RouteNames.restaurantMenuManagementPath
+                : RouteNames.restaurantOnboardingPath;
+          } else {
+            return RouteNames.homePath;
+          }
+        }
+
+        // Security Guard 1: Customer trying to access Restaurant Owner route -> redirect to Customer Home
+        if (!isRestaurantOwner && isOwnerRoute) {
+          return RouteNames.homePath;
+        }
+
+        // Security Guard 2: Restaurant Owner trying to access Customer route -> redirect to Menu Management
+        if (isRestaurantOwner && !isOwnerRoute) {
+          return hasRestaurant
+              ? RouteNames.restaurantMenuManagementPath
+              : RouteNames.restaurantOnboardingPath;
+        }
       }
+
       return null;
     },
     routes: [
@@ -61,6 +92,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: RouteNames.signupPath,
         name: RouteNames.signup,
         builder: (context, state) => const SignupScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.restaurantOnboardingPath,
+        name: RouteNames.restaurantOnboarding,
+        builder: (context, state) => const RestaurantOnboardingScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.restaurantMenuManagementPath,
+        name: RouteNames.restaurantMenuManagement,
+        builder: (context, state) => const RestaurantMenuManagementScreen(),
       ),
       GoRoute(
         path: RouteNames.restaurantDetailPath,

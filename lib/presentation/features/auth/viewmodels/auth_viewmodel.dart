@@ -78,6 +78,7 @@ class AuthViewModel extends StateNotifier<AuthState> {
     required String email,
     required String phone,
     required String password,
+    UserRole role = UserRole.customer,
   }) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     final result = await _authRepository.signupWithEmail(
@@ -85,6 +86,7 @@ class AuthViewModel extends StateNotifier<AuthState> {
       email: email,
       phone: phone,
       password: password,
+      role: role,
     );
 
     return result.when(
@@ -104,6 +106,10 @@ class AuthViewModel extends StateNotifier<AuthState> {
         return false;
       },
     );
+  }
+
+  void updateCurrentUser(UserProfile user) {
+    state = state.copyWith(user: user);
   }
 
   Future<void> logout() async {

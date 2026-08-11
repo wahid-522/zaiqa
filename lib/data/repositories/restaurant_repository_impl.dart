@@ -1,7 +1,10 @@
 import '../../core/utils/result.dart';
+import '../../domain/entities/menu_item.dart';
 import '../../domain/entities/restaurant.dart';
 import '../../domain/repositories/restaurant_repository.dart';
 import '../datasources/local_mock_datasource.dart';
+import '../models/menu_item_model.dart';
+import '../models/restaurant_model.dart';
 
 class RestaurantRepositoryImpl implements RestaurantRepository {
   final LocalMockDataSource _dataSource;
@@ -54,6 +57,49 @@ class RestaurantRepositoryImpl implements RestaurantRepository {
       return Success(isFav);
     } catch (e) {
       return Failure(AppFailure('Failed to update favorite status: $e'));
+    }
+  }
+
+  @override
+  Future<Result<AppFailure, MenuItem>> addMenuItem(String restaurantId, MenuItem item) async {
+    try {
+      final model = MenuItemModel.fromEntity(item);
+      final added = await _dataSource.addMenuItem(restaurantId, model);
+      return Success(added);
+    } catch (e) {
+      return Failure(AppFailure('Failed to add menu item: $e'));
+    }
+  }
+
+  @override
+  Future<Result<AppFailure, MenuItem>> updateMenuItem(String restaurantId, MenuItem item) async {
+    try {
+      final model = MenuItemModel.fromEntity(item);
+      final updated = await _dataSource.updateMenuItem(restaurantId, model);
+      return Success(updated);
+    } catch (e) {
+      return Failure(AppFailure('Failed to update menu item: $e'));
+    }
+  }
+
+  @override
+  Future<Result<AppFailure, bool>> deleteMenuItem(String restaurantId, String menuItemId) async {
+    try {
+      final res = await _dataSource.deleteMenuItem(restaurantId, menuItemId);
+      return Success(res);
+    } catch (e) {
+      return Failure(AppFailure('Failed to delete menu item: $e'));
+    }
+  }
+
+  @override
+  Future<Result<AppFailure, Restaurant>> createRestaurant(Restaurant restaurant) async {
+    try {
+      final model = RestaurantModel.fromEntity(restaurant);
+      final created = await _dataSource.createRestaurant(model);
+      return Success(created);
+    } catch (e) {
+      return Failure(AppFailure('Failed to create restaurant: $e'));
     }
   }
 }
