@@ -9,9 +9,10 @@ class GoogleDirectionsDataSource {
   final http.Client client;
 
   GoogleDirectionsDataSource({
-    this.apiKey = 'AIzaSyDtLGBgrGM7VmqDwjIVlnUbKHwD6JWrEQM',
+    String? apiKey,
     http.Client? client,
-  }) : client = client ?? http.Client();
+  })  : apiKey = apiKey ?? const String.fromEnvironment('DIRECTIONS_API_KEY', defaultValue: ''),
+        client = client ?? http.Client();
 
   Future<DeliveryRoute> getDirections({
     required LatLngPoint origin,

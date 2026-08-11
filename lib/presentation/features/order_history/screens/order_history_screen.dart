@@ -3,6 +3,35 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/routing/route_names.dart';
+import '../../../../domain/entities/order.dart';
+import '../../../shared_providers.dart';
+
+final customerOrderHistoryProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  final orderRepo = ref.watch(orderRepositoryProvider);
+  final reviewRepo = ref.watch(reviewRepositoryProvider);
+
+  final ordersResult = await orderRepo.getOrderHistory();
+  final orders = ordersResult.when(
+    success: (list) => list,
+    failure: (_) => <Order>[],
+  );
+
+  final resultList = <Map<String, dynamic>>[];
+  for (var order in orders) {
+    final reviewResult = await reviewRepo.getReviewForOrder(order.id);
+    final review = reviewResult.when(
+      success: (r) => r,
+      failure: (_) => null,
+    );
+
+    resultList.add({
+      'order': order,
+      'review': review,
+      'hasReview': review != null,
+    });
+  }
+  return resultList;
+});
 
 class OrderHistoryScreen extends ConsumerStatefulWidget {
   const OrderHistoryScreen({super.key});
@@ -12,53 +41,10 @@ class OrderHistoryScreen extends ConsumerStatefulWidget {
 }
 
 class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
-  final List<Map<String, dynamic>> _orders = [
-    {
-      'id': 'ZQ-84920',
-      'restaurantName': 'Katsuya Ramen',
-      'imageUrl': 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=800&auto=format&fit=crop&q=80',
-      'dateStr': 'Oct 12, 2023',
-      'itemCount': 3,
-      'price': 42.50,
-      'currency': '\$',
-      'status': 'Delivered',
-      'isCancelled': false,
-      'hasReview': false,
-      'reviewRating': 0,
-      'reviewComment': '',
-    },
-    {
-      'id': 'ZQ-84918',
-      'restaurantName': 'Firenze Pizzeria',
-      'imageUrl': 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&auto=format&fit=crop&q=80',
-      'dateStr': 'Sep 28, 2023',
-      'itemCount': 1,
-      'price': 28.00,
-      'currency': '\$',
-      'status': 'Delivered',
-      'isCancelled': false,
-      'hasReview': true,
-      'reviewRating': 5,
-      'reviewComment': 'Authentic wood-fired crust with super fresh mozzarella!',
-    },
-    {
-      'id': 'ZQ-84905',
-      'restaurantName': 'Green Roots',
-      'imageUrl': 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800&auto=format&fit=crop&q=80',
-      'dateStr': 'Sep 15, 2023',
-      'itemCount': 2,
-      'price': 34.20,
-      'currency': '\$',
-      'status': 'Cancelled',
-      'isCancelled': true,
-      'hasReview': false,
-      'reviewRating': 0,
-      'reviewComment': '',
-    },
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final ordersAsync = ref.watch(customerOrderHistoryProvider);
+
     return Scaffold(
       backgroundColor: const Color(0xFFFCF7F4),
       body: SafeArea(
@@ -102,7 +88,7 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
               ),
             ),
 
-            // Title Bar & Filter Pill Button
+            // Title Bar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
               child: Row(
@@ -131,35 +117,10 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
                     ],
                   ),
 
-                  // Filter Pill Button
-                  GestureDetector(
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Filter orders feature coming soon!')),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.tune_rounded, size: 16, color: Colors.grey.shade800),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Filter',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey.shade800,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  // Refresh Button
+                  IconButton(
+                    icon: const Icon(Icons.refresh_rounded, color: Color(0xFFC63D00)),
+                    onPressed: () => ref.invalidate(customerOrderHistoryProvider),
                   ),
                 ],
               ),
@@ -167,222 +128,166 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
 
             const SizedBox(height: 10),
 
-            // Order History List
+            // Order History List from Real OrderRepository & ReviewRepository
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                itemCount: _orders.length,
-                itemBuilder: (context, index) {
-                  final order = _orders[index];
-                  final orderId = order['id'] as String;
-                  final restName = order['restaurantName'] as String;
-                  final img = order['imageUrl'] as String;
-                  final dateStr = order['dateStr'] as String;
-                  final itemCount = order['itemCount'] as int;
-                  final price = order['price'] as double;
-                  final currency = (order['currency'] ?? '\$') as String;
-                  final status = order['status'] as String;
-                  final isCancelled = order['isCancelled'] as bool;
-                  final hasReview = order['hasReview'] as bool;
+              child: ordersAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFFC63D00))),
+                error: (err, stack) => Center(child: Text('Error loading orders: $err')),
+                data: (items) {
+                  if (items.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.receipt_long_outlined, size: 56, color: Colors.grey.shade400),
+                          const SizedBox(height: 14),
+                          Text(
+                            'No order history found.',
+                            style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
 
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        // Top Section (Thumbnail, Details & Status Badge)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.network(
-                                img,
-                                width: 70,
-                                height: 70,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => Container(
-                                  width: 70,
-                                  height: 70,
-                                  color: const Color(0xFFFFF0EC),
-                                  child: const Icon(Icons.restaurant, color: Color(0xFFC63D00)),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+                      final order = item['order'] as Order;
+                      final hasReview = item['hasReview'] as bool;
+                      final isCancelled = order.status == OrderStatus.cancelled;
+                      final isDelivered = order.status == OrderStatus.delivered;
 
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    restName,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF2C221E),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    '$dateStr • $itemCount ${itemCount == 1 ? 'Item' : 'Items'}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    '$currency${price.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF2C221E),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // Status Badge
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: isCancelled ? const Color(0xFFFFEBEE) : const Color(0xFFFFF0EC),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    isCancelled ? Icons.cancel_outlined : Icons.check_circle_outline,
-                                    size: 13,
-                                    color: isCancelled ? const Color(0xFFD32F2F) : const Color(0xFF8D4B38),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    status,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: isCancelled ? const Color(0xFFD32F2F) : const Color(0xFF8D4B38),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
                             ),
                           ],
                         ),
+                        child: Column(
+                          children: [
+                            // Top Section (Thumbnail, Details & Status Badge)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFF0EC),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(Icons.restaurant, color: Color(0xFFC63D00), size: 36),
+                                ),
+                                const SizedBox(width: 12),
 
-                        const SizedBox(height: 14),
-
-                        // Bottom Actions Row matching exact user design reference image
-                        isCancelled
-                            ? Row(
-                                children: [
-                                  // 1. Reorder Terracotta Button
-                                  Expanded(
-                                    child: SizedBox(
-                                      height: 42,
-                                      child: ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(0xFF8B5A47),
-                                          foregroundColor: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          elevation: 0,
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        order.restaurantName,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF2C221E),
                                         ),
-                                        onPressed: () {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text('Reordering from $restName...')),
-                                          );
-                                          context.push(RouteNames.cartPath);
-                                        },
-                                        child: const Text(
-                                          'Reorder',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        'Order #${order.id} • ${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'Rs. ${order.totalAmount.toInt()}',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF2C221E),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                // Status Badge
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: isCancelled ? const Color(0xFFFFEBEE) : const Color(0xFFFFF0EC),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        isCancelled ? Icons.cancel_outlined : Icons.check_circle_outline,
+                                        size: 13,
+                                        color: isCancelled ? const Color(0xFFD32F2F) : const Color(0xFF8D4B38),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        order.status.displayName,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: isCancelled ? const Color(0xFFD32F2F) : const Color(0xFF8D4B38),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 14),
+
+                            // Bottom Actions Row
+                            Row(
+                              children: [
+                                // 1. Track / View Details Button
+                                Expanded(
+                                  child: SizedBox(
+                                    height: 42,
+                                    child: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF8B5A47),
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        elevation: 0,
+                                      ),
+                                      onPressed: () {
+                                        context.push('/order-tracking/${order.id}');
+                                      },
+                                      child: const Text(
+                                        'Track Order',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 10),
+                                ),
+                                const SizedBox(width: 8),
 
-                                  // 2. View Details Soft Peach Button
-                                  Expanded(
-                                    child: SizedBox(
-                                      height: 42,
-                                      child: TextButton(
-                                        style: TextButton.styleFrom(
-                                          backgroundColor: const Color(0xFFFFF0EC),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                        ),
-                                        onPressed: () {
-                                          context.push('/order-tracking/$orderId');
-                                        },
-                                        child: const Text(
-                                          'View Details',
-                                          style: TextStyle(
-                                            color: Color(0xFF8D4B38),
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : Row(
-                                children: [
-                                  // 1. Reorder Warm Brown Button
-                                  Expanded(
-                                    child: SizedBox(
-                                      height: 42,
-                                      child: ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(0xFF8B5A47),
-                                          foregroundColor: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          elevation: 0,
-                                        ),
-                                        onPressed: () {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text('Reordering from $restName...')),
-                                          );
-                                          context.push(RouteNames.cartPath);
-                                        },
-                                        child: const Text(
-                                          'Reorder',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-
-                                  // 2. Add Review / View Review Warm Orange-Red Button
+                                // 2. Add Review / View Review Button (for Delivered Orders)
+                                if (isDelivered) ...[
                                   Expanded(
                                     child: SizedBox(
                                       height: 42,
@@ -395,15 +300,16 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
                                           ),
                                           elevation: 0,
                                         ),
-                                        onPressed: () {
+                                        onPressed: () async {
                                           if (hasReview) {
-                                            context.push('/view-review/$orderId');
+                                            await context.push('/view-review/${order.id}');
                                           } else {
-                                            context.push('/leave-review/$orderId');
+                                            await context.push('/leave-review/${order.id}');
+                                            ref.invalidate(customerOrderHistoryProvider);
                                           }
                                         },
                                         child: Text(
-                                          hasReview ? 'View Review' : 'Add Review',
+                                          hasReview ? 'View Review' : 'Leave a Review',
                                           style: const TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.bold,
@@ -413,30 +319,33 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
                                     ),
                                   ),
                                   const SizedBox(width: 8),
+                                ],
 
-                                  // 3. Receipt Icon Button
-                                  GestureDetector(
-                                    onTap: () {
-                                      context.push('/order-tracking/$orderId');
-                                    },
-                                    child: Container(
-                                      width: 42,
-                                      height: 42,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFFF0EC),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: const Icon(
-                                        Icons.receipt_long_outlined,
-                                        color: Color(0xFF2C221E),
-                                        size: 20,
-                                      ),
+                                // 3. Receipt Icon Button
+                                GestureDetector(
+                                  onTap: () {
+                                    context.push('/order-tracking/${order.id}');
+                                  },
+                                  child: Container(
+                                    width: 42,
+                                    height: 42,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFF0EC),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(
+                                      Icons.receipt_long_outlined,
+                                      color: Color(0xFF2C221E),
+                                      size: 20,
                                     ),
                                   ),
-                                ],
-                              ),
-                      ],
-                    ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   );
                 },
               ),

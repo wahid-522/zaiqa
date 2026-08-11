@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../domain/entities/review.dart';
 import '../../../../shared/widgets/zaiqa_image_picker_tile.dart';
+import '../../auth/viewmodels/auth_viewmodel.dart';
+import '../../../shared_providers.dart';
 
 class LeaveReviewScreen extends ConsumerStatefulWidget {
   final String orderId;
@@ -26,11 +29,57 @@ class _LeaveReviewScreenState extends ConsumerState<LeaveReviewScreen> {
   int _selectedRating = 5;
   final TextEditingController _commentController = TextEditingController();
   String? _foodPhotoPath;
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
     _commentController.dispose();
     super.dispose();
+  }
+
+  void _onSubmitReview() async {
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    final user = ref.read(authViewModelProvider).user;
+    final review = Review(
+      id: 'rev_${DateTime.now().millisecondsSinceEpoch}',
+      orderId: widget.orderId,
+      restaurantId: 'rest_spice_route',
+      userId: user?.id ?? 'user_101',
+      userName: user?.name ?? 'Customer',
+      rating: _selectedRating,
+      comment: _commentController.text.trim().isEmpty ? null : _commentController.text.trim(),
+      photoUrls: _foodPhotoPath != null ? [_foodPhotoPath!] : const [],
+      createdAt: DateTime.now(),
+    );
+
+    final useCase = ref.read(submitReviewUseCaseProvider);
+    final result = await useCase.execute(review);
+
+    if (!mounted) return;
+
+    setState(() {
+      _isSubmitting = false;
+    });
+
+    result.when(
+      success: (savedReview) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Thank you! Your review and food photo have been submitted.')),
+        );
+        context.pop();
+      },
+      failure: (failure) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(failure.message),
+            backgroundColor: Colors.red,
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -225,19 +274,20 @@ class _LeaveReviewScreenState extends ConsumerState<LeaveReviewScreen> {
                     ),
                     elevation: 0,
                   ),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Thank you! Your review and food photo have been submitted.')),
-                    );
-                    context.pop();
-                  },
-                  child: const Text(
-                    'Submit Review',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  onPressed: _isSubmitting ? null : _onSubmitReview,
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text(
+                          'Submit Review',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ),

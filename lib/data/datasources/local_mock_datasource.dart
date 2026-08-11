@@ -2,6 +2,7 @@ import '../models/restaurant_model.dart';
 import '../models/menu_item_model.dart';
 import '../models/user_model.dart';
 import '../models/order_model.dart';
+import '../models/review_model.dart';
 import '../../domain/entities/order.dart';
 import '../../domain/entities/user_profile.dart';
 
@@ -43,6 +44,20 @@ class LocalMockDataSource {
       deliveryAddress: 'Apartment 4B, Falcon Complex, Karachi',
       paymentMethod: 'Credit Card',
       estimatedDeliveryTime: '25 min',
+    ),
+    OrderModel(
+      id: 'ZQ-90183',
+      restaurantId: 'rest_spice_route',
+      restaurantName: 'The Spice Route',
+      items: const [],
+      subtotal: 1500.0,
+      deliveryFee: 150.0,
+      totalAmount: 1650.0,
+      status: OrderStatus.delivered,
+      createdAt: DateTime.now().subtract(const Duration(hours: 5)),
+      deliveryAddress: 'House #42, Block 5, Gulshan-e-Iqbal, Karachi',
+      paymentMethod: 'Credit Card',
+      estimatedDeliveryTime: 'Delivered in 30 min',
     ),
   ];
   UserModel _currentUser = const UserModel(
@@ -451,5 +466,37 @@ class LocalMockDataSource {
   Future<UserModel?> getCurrentUser() async {
     await Future.delayed(simulatedDelay);
     return _currentUser;
+  }
+
+  // Reviews Dataset & Persistence
+  final List<ReviewModel> _reviews = [
+    ReviewModel(
+      id: 'rev_90182',
+      orderId: 'ZQ-90182',
+      restaurantId: 'rest_spice_route',
+      userId: 'user_101',
+      userName: 'Hamza Khan',
+      rating: 5,
+      comment: 'Absolutely phenomenal! The chicken tikka masala was piping hot, fragrant, and perfectly spiced. Packaging was intact and delivery was super quick.',
+      photoUrls: ['https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800&auto=format&fit=crop&q=80'],
+      createdAt: DateTime.now().subtract(const Duration(hours: 1)),
+    ),
+  ];
+
+  Future<ReviewModel> submitReview(ReviewModel reviewModel) async {
+    await Future.delayed(simulatedDelay);
+    _reviews.add(reviewModel);
+    return reviewModel;
+  }
+
+  Future<ReviewModel?> getReviewForOrder(String orderId) async {
+    await Future.delayed(simulatedDelay);
+    final match = _reviews.where((r) => r.orderId == orderId);
+    return match.isNotEmpty ? match.first : null;
+  }
+
+  Future<List<ReviewModel>> getReviewsForRestaurant(String restaurantId) async {
+    await Future.delayed(simulatedDelay);
+    return _reviews.where((r) => r.restaurantId == restaurantId).toList();
   }
 }
