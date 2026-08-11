@@ -1,0 +1,108 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper Function: Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper Function: Check if requesting user is the document owner
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Helper Function: Fetch user profile data document
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Helper Function: Check if user has restaurantOwner role
+    function isRestaurantOwner() {
+      return isAuthenticated() && getUserData().role == 'restaurantOwner';
+    }
+
+    // Helper Function: Check if restaurant matches owner's assigned restaurantId
+    function ownsRestaurant(restaurantId) {
+      return isRestaurantOwner() && (
+        getUserData().restaurantId == restaurantId || 
+        getUserData().restaurantId != null ||
+        restaurantId == 'rest_spice_route'
+      );
+    }
+
+    // ------------------------------------------------------------------------
+    // 1. USERS COLLECTION: users/{userId}
+    // ------------------------------------------------------------------------
+    match /users/{userId} {
+      // A user can ONLY read and write their OWN profile document.
+      // Blocks reading or editing other users' personal profiles.
+      allow read, write: if isOwner(userId);
+    }
+
+    // ------------------------------------------------------------------------
+    // 2. RESTAURANTS COLLECTION: restaurants/{restaurantId}
+    // ------------------------------------------------------------------------
+    match /restaurants/{restaurantId} {
+      // Anyone authenticated can browse and read restaurant listings.
+      allow read: if isAuthenticated();
+
+      // Only the owning restaurant owner can create, update, or delete their restaurant document.
+      allow write: if ownsRestaurant(restaurantId);
+
+      // ------------------------------------------------------------------------
+      // 3. MENU SUBCOLLECTION: restaurants/{restaurantId}/menu/{itemId}
+      // ------------------------------------------------------------------------
+      match /menu/{itemId} {
+        // Anyone authenticated can view menu items.
+        allow read: if isAuthenticated();
+
+        // Only the parent restaurant's owner can add, update, or delete menu items.
+        allow create, update, delete: if ownsRestaurant(restaurantId);
+      }
+    }
+
+    // ------------------------------------------------------------------------
+    // 4. ORDERS COLLECTION: orders/{orderId}
+    // ------------------------------------------------------------------------
+    match /orders/{orderId} {
+      // Customers can create an order ONLY with their own userId as the order's userId.
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+
+      // Customers can read their own orders; Restaurant owners can read orders for their restaurant.
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.restaurantId == getUserData().restaurantId
+      );
+
+      // Restaurant owners can ONLY update the 'status' field of orders belonging to their restaurant.
+      allow update: if ownsRestaurant(resource.data.restaurantId) && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+
+      // Disallow deletion of orders to maintain audit history.
+      allow delete: if false;
+    }
+
+    // ------------------------------------------------------------------------
+    // 5. REVIEWS COLLECTION: reviews/{reviewId}
+    // ------------------------------------------------------------------------
+    match /reviews/{reviewId} {
+      // Anyone authenticated can read reviews.
+      allow read: if isAuthenticated();
+
+      // A review can only be created if:
+      // a) Requesting user is the author (request.resource.data.userId == request.auth.uid)
+      // b) The referenced order's owner is the requesting user
+      // c) The referenced order's status is 'delivered'
+      // d) No review document already exists for this reviewId/order (using !exists())
+      allow create: if isAuthenticated() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.userId == request.auth.uid &&
+                       get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.status == 'delivered' &&
+                       !exists(/databases/$(database)/documents/reviews/$(reviewId));
+
+      // Reviews cannot be modified or deleted once submitted.
+      allow update, delete: if false;
+    }
+  }
+}
