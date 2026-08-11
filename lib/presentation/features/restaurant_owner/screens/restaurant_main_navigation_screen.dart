@@ -35,12 +35,6 @@ class _RestaurantMainNavigationScreenState extends State<RestaurantMainNavigatio
     final List<Widget> pages = [
       RestaurantMenuTab(
         onEditItem: _onEditItem,
-        onGoToAddTab: () {
-          setState(() {
-            _itemToEdit = null;
-            _selectedIndex = 1;
-          });
-        },
       ),
       RestaurantAddItemTab(
         itemToEdit: _itemToEdit,

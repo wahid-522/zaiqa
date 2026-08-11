@@ -179,6 +179,16 @@ class RestaurantSettingsTab extends ConsumerWidget {
                     ),
                     const Divider(height: 1, indent: 50),
                     _buildSettingsRow(
+                      icon: Icons.rate_review_outlined,
+                      title: 'Customer Food Reviews & Ratings',
+                      onTap: () {
+                        context.push(
+                          RouteNames.viewReviewPath.replaceAll(':orderId', 'ZQ-90182'),
+                        );
+                      },
+                    ),
+                    const Divider(height: 1, indent: 50),
+                    _buildSettingsRow(
                       icon: Icons.help_outline_rounded,
                       title: 'Owner Support & FAQs',
                       onTap: () {

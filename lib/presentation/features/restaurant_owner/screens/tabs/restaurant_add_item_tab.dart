@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../../domain/entities/menu_item.dart';
 import '../../../../../shared/widgets/zaiqa_button.dart';
 import '../../../../../shared/widgets/zaiqa_text_field.dart';
+import '../../../../../shared/widgets/zaiqa_image_picker_tile.dart';
 import '../../viewmodels/menu_management_viewmodel.dart';
 
 class RestaurantAddItemTab extends ConsumerStatefulWidget {
@@ -182,12 +183,12 @@ class _RestaurantAddItemTabState extends ConsumerState<RestaurantAddItemTab> {
                 ),
                 const SizedBox(height: 14),
 
-                ZaiqaTextField(
-                  label: 'Image URL',
-                  hint: 'https://images.unsplash.com/...',
-                  controller: _imageUrlController,
-                  prefixIcon: Icons.image_outlined,
-                  validator: (val) => val == null || val.trim().isEmpty ? 'Image URL is required' : null,
+                ZaiqaImagePickerTile(
+                  label: 'Food Photo',
+                  initialImageUrl: _imageUrlController.text,
+                  onImageSelected: (path) {
+                    _imageUrlController.text = path;
+                  },
                 ),
                 const SizedBox(height: 16),
 

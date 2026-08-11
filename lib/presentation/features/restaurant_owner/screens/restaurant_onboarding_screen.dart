@@ -6,6 +6,7 @@ import '../../../../core/routing/route_names.dart';
 import '../../../../domain/entities/restaurant.dart';
 import '../../../../shared/widgets/zaiqa_button.dart';
 import '../../../../shared/widgets/zaiqa_text_field.dart';
+import '../../../../shared/widgets/zaiqa_image_picker_tile.dart';
 import '../../auth/viewmodels/auth_viewmodel.dart';
 import '../../../shared_providers.dart';
 
@@ -159,12 +160,12 @@ class _RestaurantOnboardingScreenState extends ConsumerState<RestaurantOnboardin
                 ),
                 const SizedBox(height: 16),
 
-                ZaiqaTextField(
-                  label: 'Banner Image URL',
-                  hint: 'https://images.unsplash.com/...',
-                  controller: _imageUrlController,
-                  prefixIcon: Icons.image_outlined,
-                  validator: (val) => val == null || val.trim().isEmpty ? 'Image URL is required' : null,
+                ZaiqaImagePickerTile(
+                  label: 'Restaurant Banner Image',
+                  initialImageUrl: _imageUrlController.text,
+                  onImageSelected: (path) {
+                    _imageUrlController.text = path;
+                  },
                 ),
                 const SizedBox(height: 28),
 

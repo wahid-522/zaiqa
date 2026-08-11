@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../../core/routing/route_names.dart';
 import '../../../../../domain/entities/order.dart';
 import '../../../../shared_providers.dart';
 import '../../../auth/viewmodels/auth_viewmodel.dart';
@@ -213,6 +215,25 @@ class RestaurantOrdersTab extends ConsumerWidget {
                                   ),
                                 ),
                               ],
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // View Food Review Button
+                            OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFFC63D00),
+                                side: const BorderSide(color: Color(0xFFC63D00)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                minimumSize: const Size(double.infinity, 38),
+                              ),
+                              icon: const Icon(Icons.star_outline_rounded, size: 18),
+                              label: const Text('View Customer Review', style: TextStyle(fontWeight: FontWeight.bold)),
+                              onPressed: () {
+                                context.push(
+                                  RouteNames.viewReviewPath.replaceAll(':orderId', order.id),
+                                );
+                              },
                             ),
                           ],
                         ),

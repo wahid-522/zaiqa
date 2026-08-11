@@ -6,12 +6,10 @@ import '../../viewmodels/menu_management_viewmodel.dart';
 
 class RestaurantMenuTab extends ConsumerWidget {
   final Function(MenuItem item) onEditItem;
-  final VoidCallback onGoToAddTab;
 
   const RestaurantMenuTab({
     super.key,
     required this.onEditItem,
-    required this.onGoToAddTab,
   });
 
   void _confirmDelete(BuildContext context, WidgetRef ref, MenuItem item) {
@@ -68,13 +66,6 @@ class RestaurantMenuTab extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFFCF7F4),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFFC63D00),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Item', style: TextStyle(fontWeight: FontWeight.bold)),
-        onPressed: onGoToAddTab,
-      ),
       body: SafeArea(
         child: Column(
           children: [
