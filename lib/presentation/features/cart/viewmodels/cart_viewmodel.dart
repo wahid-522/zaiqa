@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../domain/entities/menu_item.dart';
 import '../../../../domain/entities/cart_item.dart';
 import '../../../../domain/usecases/manage_cart_usecase.dart';
 import '../../../shared_providers.dart';
@@ -54,6 +55,20 @@ class CartViewModel extends StateNotifier<CartState> {
         state = state.copyWith(isLoading: false, errorMessage: failure.message);
       },
     );
+  }
+
+  Future<void> addItem(MenuItem menuItem, {int quantity = 1}) async {
+    final result = await _manageCartUseCase.addItem(menuItem: menuItem, quantity: quantity);
+    result.when(
+      success: (items) {
+        state = state.copyWith(items: items);
+      },
+      failure: (_) {},
+    );
+  }
+
+  void syncItems(List<CartItem> items) {
+    state = state.copyWith(items: items);
   }
 
   Future<void> updateQuantity(String cartItemId, int newQuantity) async {

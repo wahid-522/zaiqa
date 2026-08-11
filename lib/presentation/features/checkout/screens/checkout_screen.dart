@@ -45,6 +45,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     void onConfirmOrder() async {
       final order = await viewModel.placeOrder();
       if (order != null && context.mounted) {
+        ref.read(cartViewModelProvider.notifier).clearCart();
         context.go('/order-tracking/${order.id}');
       }
     }

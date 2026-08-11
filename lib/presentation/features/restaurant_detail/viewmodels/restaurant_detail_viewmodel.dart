@@ -5,6 +5,7 @@ import '../../../../domain/entities/restaurant.dart';
 import '../../../../domain/usecases/get_restaurant_detail_usecase.dart';
 import '../../../../domain/usecases/manage_cart_usecase.dart';
 import '../../../shared_providers.dart';
+import '../../cart/viewmodels/cart_viewmodel.dart';
 
 class RestaurantDetailState {
   final Restaurant? restaurant;
@@ -50,12 +51,15 @@ class RestaurantDetailViewModel extends StateNotifier<RestaurantDetailState> {
   final GetRestaurantDetailUseCase _getRestaurantDetailUseCase;
   final ManageCartUseCase _manageCartUseCase;
   final String restaurantId;
+  final CartViewModel? _cartNotifier;
 
   RestaurantDetailViewModel(
     this._getRestaurantDetailUseCase,
     this._manageCartUseCase,
-    this.restaurantId,
-  ) : super(const RestaurantDetailState()) {
+    this.restaurantId, {
+    CartViewModel? cartNotifier,
+  })  : _cartNotifier = cartNotifier,
+        super(const RestaurantDetailState()) {
     loadDetails();
   }
 
@@ -125,15 +129,18 @@ class RestaurantDetailViewModel extends StateNotifier<RestaurantDetailState> {
       quantities[c.menuItem.id] = c.quantity;
     }
     state = state.copyWith(cartItems: items, itemQuantities: quantities);
+    _cartNotifier?.syncItems(items);
   }
 }
 
 final restaurantDetailViewModelProvider = StateNotifierProvider.family
     .autoDispose<RestaurantDetailViewModel, RestaurantDetailState, String>(
         (ref, restaurantId) {
+  final cartNotifier = ref.watch(cartViewModelProvider.notifier);
   return RestaurantDetailViewModel(
     ref.watch(getRestaurantDetailUseCaseProvider),
     ref.watch(manageCartUseCaseProvider),
     restaurantId,
+    cartNotifier: cartNotifier,
   );
 });

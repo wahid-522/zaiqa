@@ -53,10 +53,12 @@ class EmptyStateWidget extends StatelessWidget {
           ),
           if (buttonText != null && onButtonPressed != null) ...[
             const SizedBox(height: 24),
-            ZaiqaButton(
-              text: buttonText!,
-              onPressed: onButtonPressed,
-              width: 180,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ZaiqaButton(
+                text: buttonText!,
+                onPressed: onButtonPressed,
+              ),
             ),
           ],
         ],

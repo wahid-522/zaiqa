@@ -7,11 +7,24 @@ import '../../../../core/routing/route_names.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../viewmodels/cart_viewmodel.dart';
 
-class CartScreen extends ConsumerWidget {
+class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends ConsumerState<CartScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(cartViewModelProvider.notifier).loadCart();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(cartViewModelProvider);
     final viewModel = ref.read(cartViewModelProvider.notifier);
 
