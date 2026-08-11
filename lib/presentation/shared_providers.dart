@@ -46,7 +46,7 @@ final orderRepositoryProvider = Provider<OrderRepository>((ref) {
 });
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepositoryImpl(ref.watch(localMockDataSourceProvider));
+  return AuthRepositoryImpl();
 });
 
 final directionsRepositoryProvider = Provider<DirectionsRepository>((ref) {
