@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/constants/app_colors.dart';
 import '../../../../core/routing/route_names.dart';
 import '../../../../domain/entities/restaurant.dart';
 import '../../../../shared/widgets/zaiqa_button.dart';
@@ -20,10 +21,23 @@ class RestaurantOnboardingScreen extends ConsumerStatefulWidget {
 class _RestaurantOnboardingScreenState extends ConsumerState<RestaurantOnboardingScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _cuisineController = TextEditingController();
   final _addressController = TextEditingController();
   final _imageUrlController = TextEditingController();
   bool _isLoading = false;
+
+  final List<String> _availableCategories = const [
+    'Pakistani',
+    'Fast Food',
+    'Italian',
+    'Chinese',
+    'Barbecue',
+    'Burgers',
+    'Desserts',
+    'Beverages',
+    'Gourmet',
+  ];
+
+  final Set<String> _selectedCuisines = {'Pakistani'};
 
   @override
   void initState() {
@@ -35,7 +49,6 @@ class _RestaurantOnboardingScreenState extends ConsumerState<RestaurantOnboardin
   @override
   void dispose() {
     _nameController.dispose();
-    _cuisineController.dispose();
     _addressController.dispose();
     _imageUrlController.dispose();
     super.dispose();
@@ -43,16 +56,19 @@ class _RestaurantOnboardingScreenState extends ConsumerState<RestaurantOnboardin
 
   void _onSaveRestaurant() async {
     if (_formKey.currentState?.validate() ?? false) {
+      if (_selectedCuisines.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select at least one Food Category / Cuisine')),
+        );
+        return;
+      }
+
       setState(() {
         _isLoading = true;
       });
 
       final restaurantId = 'rest_owner_${DateTime.now().millisecondsSinceEpoch}';
-      final cuisines = _cuisineController.text
-          .split(',')
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .toList();
+      final cuisines = _selectedCuisines.toList();
 
       final newRestaurant = Restaurant(
         id: restaurantId,
@@ -62,7 +78,7 @@ class _RestaurantOnboardingScreenState extends ConsumerState<RestaurantOnboardin
         reviewCount: 1,
         deliveryTime: '25-35 min',
         deliveryFee: 120.0,
-        cuisineTypes: cuisines.isEmpty ? ['Italian', 'Gourmet'] : cuisines,
+        cuisineTypes: cuisines,
         address: _addressController.text.trim(),
         menu: const [],
       );
@@ -142,12 +158,57 @@ class _RestaurantOnboardingScreenState extends ConsumerState<RestaurantOnboardin
                 ),
                 const SizedBox(height: 16),
 
-                ZaiqaTextField(
-                  label: 'Cuisine Types (comma-separated)',
-                  hint: 'e.g. Italian, Wood-fired Pizza, Pasta',
-                  controller: _cuisineController,
-                  prefixIcon: Icons.restaurant_menu_outlined,
-                  validator: (val) => val == null || val.trim().isEmpty ? 'At least one cuisine required' : null,
+                // Multi-select Food Categories / Cuisine Types
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Food Category / Cuisine Types',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF2C221E)),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Select all categories that apply to your restaurant',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _availableCategories.map((cat) {
+                        final isSelected = _selectedCuisines.contains(cat);
+                        return FilterChip(
+                          label: Text(cat),
+                          selected: isSelected,
+                          selectedColor: const Color(0xFFFFF0EC),
+                          checkmarkColor: AppColors.primary,
+                          labelStyle: TextStyle(
+                            fontSize: 13,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected ? AppColors.primary : const Color(0xFF2C221E),
+                          ),
+                          backgroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: isSelected ? AppColors.primary : Colors.grey.shade300,
+                            ),
+                          ),
+                          onSelected: (selected) {
+                            setState(() {
+                              if (selected) {
+                                _selectedCuisines.add(cat);
+                              } else {
+                                if (_selectedCuisines.length > 1) {
+                                  _selectedCuisines.remove(cat);
+                                }
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
 

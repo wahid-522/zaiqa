@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/routing/route_names.dart';
 import '../../../../domain/entities/user_profile.dart';
@@ -9,7 +10,12 @@ import '../../../../shared/widgets/zaiqa_text_field.dart';
 import '../viewmodels/auth_viewmodel.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
-  const SignupScreen({super.key});
+  final UserRole initialRole;
+
+  const SignupScreen({
+    super.key,
+    this.initialRole = UserRole.customer,
+  });
 
   @override
   ConsumerState<SignupScreen> createState() => _SignupScreenState();
@@ -21,7 +27,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
-  UserRole _selectedRole = UserRole.customer;
+  final _confirmPasswordController = TextEditingController();
 
   @override
   void dispose() {
@@ -29,21 +35,23 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
   void _onSignup() async {
     if (_formKey.currentState?.validate() ?? false) {
       final success = await ref.read(authViewModelProvider.notifier).signup(
-            name: _nameController.text,
-            email: _emailController.text,
-            phone: _phoneController.text,
-            password: _passwordController.text,
-            role: _selectedRole,
+            name: _nameController.text.trim(),
+            email: _emailController.text.trim(),
+            phone: _phoneController.text.trim(),
+            password: _passwordController.text.trim(),
+            role: widget.initialRole,
           );
+
       if (success && mounted) {
         final currentUser = ref.read(authViewModelProvider).user;
-        if (currentUser?.isRestaurantOwner ?? (_selectedRole == UserRole.restaurantOwner)) {
+        if (currentUser?.isRestaurantOwner ?? (widget.initialRole == UserRole.restaurantOwner)) {
           context.go(RouteNames.restaurantOnboardingPath);
         } else {
           context.go(RouteNames.homePath);
@@ -55,13 +63,21 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authViewModelProvider);
+    final isOwner = widget.initialRole == UserRole.restaurantOwner;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFCF7F4),
       appBar: AppBar(
         backgroundColor: const Color(0xFFFCF7F4),
         elevation: 0,
-        title: const Text('Create Account'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF2C221E)),
+          onPressed: () => context.pop(),
+        ),
+        title: Text(
+          isOwner ? 'Restaurant Owner Registration' : 'Customer Registration',
+          style: const TextStyle(color: Color(0xFF2C221E), fontWeight: FontWeight.bold),
+        ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -72,7 +88,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Join Zaiqa today',
+                  isOwner ? 'Owner Account Details' : 'Personal Details',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -81,115 +97,21 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Select your account type to get started',
+                  isOwner
+                      ? 'Create your business account to manage your restaurant'
+                      : 'Fill in your information to start ordering delicious food',
                   style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
-                // Account Type / Role Segmented Selector
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedRole = UserRole.customer;
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: _selectedRole == UserRole.customer
-                                  ? const Color(0xFFC63D00)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.person_outline_rounded,
-                                  size: 18,
-                                  color: _selectedRole == UserRole.customer
-                                      ? Colors.white
-                                      : Colors.grey.shade700,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Customer',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: _selectedRole == UserRole.customer
-                                        ? Colors.white
-                                        : Colors.grey.shade700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedRole = UserRole.restaurantOwner;
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: _selectedRole == UserRole.restaurantOwner
-                                  ? const Color(0xFFC63D00)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.storefront_rounded,
-                                  size: 18,
-                                  color: _selectedRole == UserRole.restaurantOwner
-                                      ? Colors.white
-                                      : Colors.grey.shade700,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Restaurant',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: _selectedRole == UserRole.restaurantOwner
-                                        ? Colors.white
-                                        : Colors.grey.shade700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
+                // Error Banner
                 if (authState.errorMessage != null) ...[
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.red[50],
                       borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red[200]!),
                     ),
                     child: Text(
                       authState.errorMessage!,
@@ -200,33 +122,43 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 ],
 
                 ZaiqaTextField(
-                  label: 'Full Name',
-                  hint: _selectedRole == UserRole.restaurantOwner ? 'e.g. Chef Marco / Owner' : 'e.g. Hamza Khan',
+                  label: isOwner ? 'Owner Full Name' : 'Full Name',
+                  hint: isOwner ? 'e.g. Chef Marco / Owner' : 'e.g. Hamza Khan',
                   controller: _nameController,
                   prefixIcon: Icons.person_outline,
-                  validator: (val) => val == null || val.trim().isEmpty ? 'Name is required' : null,
+                  validator: (val) {
+                    if (val == null || val.trim().isEmpty) return 'Full name is required';
+                    return null;
+                  },
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
 
                 ZaiqaTextField(
                   label: 'Email Address',
-                  hint: 'name@domain.com',
+                  hint: 'e.g. name@example.com',
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   prefixIcon: Icons.email_outlined,
-                  validator: (val) => val == null || !val.contains('@') ? 'Valid email required' : null,
+                  validator: (val) {
+                    if (val == null || val.trim().isEmpty) return 'Email is required';
+                    if (!val.contains('@') || !val.contains('.')) return 'Enter a valid email address';
+                    return null;
+                  },
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
 
                 ZaiqaTextField(
                   label: 'Phone Number',
-                  hint: '+92 300 1234567',
+                  hint: 'e.g. +92 300 1234567',
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
                   prefixIcon: Icons.phone_outlined,
-                  validator: (val) => val == null || val.trim().isEmpty ? 'Phone number required' : null,
+                  validator: (val) {
+                    if (val == null || val.trim().isEmpty) return 'Phone number is required';
+                    return null;
+                  },
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
 
                 ZaiqaTextField(
                   label: 'Password',
@@ -234,14 +166,49 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   controller: _passwordController,
                   obscureText: true,
                   prefixIcon: Icons.lock_outline,
-                  validator: (val) => val == null || val.length < 6 ? 'Min 6 characters' : null,
+                  validator: (val) {
+                    if (val == null || val.length < 6) return 'Password must be at least 6 characters';
+                    return null;
+                  },
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+
+                ZaiqaTextField(
+                  label: 'Confirm Password',
+                  hint: '••••••••',
+                  controller: _confirmPasswordController,
+                  obscureText: true,
+                  prefixIcon: Icons.lock_clock_outlined,
+                  validator: (val) {
+                    if (val == null || val.isEmpty) return 'Please confirm your password';
+                    if (val != _passwordController.text) return 'Passwords do not match';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 28),
 
                 ZaiqaButton(
-                  text: _selectedRole == UserRole.restaurantOwner ? 'Continue to Restaurant Setup' : 'Create Account',
+                  text: isOwner ? 'Create Restaurant Account' : 'Create Account',
                   isLoading: authState.isLoading,
                   onPressed: _onSignup,
+                ),
+                const SizedBox(height: 16),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('Already have an account? '),
+                    GestureDetector(
+                      onTap: () => context.go(RouteNames.loginPath),
+                      child: const Text(
+                        'Sign In',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

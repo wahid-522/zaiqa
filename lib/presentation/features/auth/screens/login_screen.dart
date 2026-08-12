@@ -17,8 +17,8 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController(text: 'hamza@zaiqa.app');
-  final _passwordController = TextEditingController(text: 'password123');
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
 
   @override
   void dispose() {
@@ -100,38 +100,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                  const SizedBox(height: 24),
-
-                  // Quick Demo Autofill Chips Row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ActionChip(
-                        avatar: const Icon(Icons.person_outline, size: 16, color: Color(0xFFC63D00)),
-                        label: const Text('Customer Demo', style: TextStyle(fontSize: 12)),
-                        backgroundColor: Colors.white,
-                        onPressed: () {
-                          setState(() {
-                            _emailController.text = 'hamza@zaiqa.app';
-                            _passwordController.text = 'password123';
-                          });
-                        },
-                      ),
-                      const SizedBox(width: 10),
-                      ActionChip(
-                        avatar: const Icon(Icons.storefront_outlined, size: 16, color: Color(0xFFC63D00)),
-                        label: const Text('Owner Demo', style: TextStyle(fontSize: 12)),
-                        backgroundColor: Colors.white,
-                        onPressed: () {
-                          setState(() {
-                            _emailController.text = 'wahid72701@gmail.com';
-                            _passwordController.text = 'password123';
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 32),
 
                   // Error Banner
                   if (authState.errorMessage != null) ...[
@@ -189,7 +158,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     children: [
                       const Text("Don't have an account? "),
                       GestureDetector(
-                        onTap: () => context.push(RouteNames.signupPath),
+                        onTap: () => context.push(RouteNames.accountTypeSelectionPath),
                         child: const Text(
                           'Sign Up',
                           style: TextStyle(

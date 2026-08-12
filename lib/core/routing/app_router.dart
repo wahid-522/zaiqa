@@ -6,6 +6,8 @@ import '../../presentation/features/address_picker/screens/address_picker_screen
 import '../../presentation/features/address_picker/screens/saved_addresses_screen.dart';
 import '../../presentation/features/favorites/screens/favorites_screen.dart';
 import '../../presentation/features/order_history/screens/order_history_screen.dart';
+import '../../domain/entities/user_profile.dart';
+import '../../presentation/features/auth/screens/account_type_selection_screen.dart';
 import '../../presentation/features/auth/screens/login_screen.dart';
 import '../../presentation/features/auth/screens/signup_screen.dart';
 import '../../presentation/features/auth/viewmodels/auth_viewmodel.dart';
@@ -31,7 +33,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       final user = authState.user;
       final isSplash = state.matchedLocation == RouteNames.splashPath;
       final isLoggingIn = state.matchedLocation == RouteNames.loginPath ||
-          state.matchedLocation == RouteNames.signupPath;
+          state.matchedLocation == RouteNames.signupPath ||
+          state.matchedLocation == RouteNames.accountTypeSelectionPath;
 
       if (isSplash) {
         return null;
@@ -89,9 +92,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const LoginScreen(),
       ),
       GoRoute(
+        path: RouteNames.accountTypeSelectionPath,
+        name: RouteNames.accountTypeSelection,
+        builder: (context, state) => const AccountTypeSelectionScreen(),
+      ),
+      GoRoute(
         path: RouteNames.signupPath,
         name: RouteNames.signup,
-        builder: (context, state) => const SignupScreen(),
+        builder: (context, state) {
+          final roleStr = state.uri.queryParameters['role'];
+          final role = roleStr == 'restaurantOwner' ? UserRole.restaurantOwner : UserRole.customer;
+          return SignupScreen(initialRole: role);
+        },
       ),
       GoRoute(
         path: RouteNames.restaurantOnboardingPath,
