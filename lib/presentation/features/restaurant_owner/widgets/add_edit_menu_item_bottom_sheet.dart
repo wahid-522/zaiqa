@@ -171,7 +171,8 @@ class _AddEditMenuItemBottomSheetState extends State<AddEditMenuItemBottomSheet>
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Vegetarian', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                       value: _isVegetarian,
-                      activeThumbColor: const Color(0xFFC63D00),
+                      // ignore: deprecated_member_use
+                      activeColor: const Color(0xFFC63D00),
                       onChanged: (val) => setState(() => _isVegetarian = val),
                     ),
                   ),
@@ -180,7 +181,8 @@ class _AddEditMenuItemBottomSheetState extends State<AddEditMenuItemBottomSheet>
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Spicy', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                       value: _isSpicy,
-                      activeThumbColor: const Color(0xFFC63D00),
+                      // ignore: deprecated_member_use
+                      activeColor: const Color(0xFFC63D00),
                       onChanged: (val) => setState(() => _isSpicy = val),
                     ),
                   ),

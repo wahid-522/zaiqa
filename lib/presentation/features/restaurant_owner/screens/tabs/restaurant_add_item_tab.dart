@@ -206,7 +206,8 @@ class _RestaurantAddItemTabState extends ConsumerState<RestaurantAddItemTab> {
                         contentPadding: EdgeInsets.zero,
                         title: const Text('Vegetarian Item', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                         value: _isVegetarian,
-                        activeThumbColor: const Color(0xFFC63D00),
+                        // ignore: deprecated_member_use
+                        activeColor: const Color(0xFFC63D00),
                         onChanged: (val) => setState(() => _isVegetarian = val),
                       ),
                       const Divider(height: 1),
@@ -214,7 +215,8 @@ class _RestaurantAddItemTabState extends ConsumerState<RestaurantAddItemTab> {
                         contentPadding: EdgeInsets.zero,
                         title: const Text('Spicy Item', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                         value: _isSpicy,
-                        activeThumbColor: const Color(0xFFC63D00),
+                        // ignore: deprecated_member_use
+                        activeColor: const Color(0xFFC63D00),
                         onChanged: (val) => setState(() => _isSpicy = val),
                       ),
                     ],
