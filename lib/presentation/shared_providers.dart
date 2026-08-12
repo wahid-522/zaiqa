@@ -85,7 +85,7 @@ final getRestaurantOrdersUseCaseProvider = Provider<GetRestaurantOrdersUseCase>(
 });
 
 final reviewRepositoryProvider = Provider<ReviewRepository>((ref) {
-  return ReviewRepositoryImpl(ref.watch(localMockDataSourceProvider));
+  return ReviewRepositoryImpl();
 });
 
 final submitReviewUseCaseProvider = Provider<SubmitReviewUseCase>((ref) {

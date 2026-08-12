@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zaiqa/data/datasources/local_mock_datasource.dart';
 import 'package:zaiqa/data/repositories/order_repository_impl.dart';
 import 'package:zaiqa/data/repositories/review_repository_impl.dart';
 import 'package:zaiqa/domain/entities/review.dart';
@@ -7,15 +6,13 @@ import 'package:zaiqa/domain/usecases/manage_review_usecase.dart';
 
 void main() {
   group('Review Clean Architecture & Business Rules Tests', () {
-    late LocalMockDataSource dataSource;
     late ReviewRepositoryImpl reviewRepository;
     late OrderRepositoryImpl orderRepository;
     late SubmitReviewUseCase submitReviewUseCase;
     late GetReviewForOrderUseCase getReviewForOrderUseCase;
 
     setUp(() {
-      dataSource = LocalMockDataSource();
-      reviewRepository = ReviewRepositoryImpl(dataSource);
+      reviewRepository = ReviewRepositoryImpl();
       orderRepository = OrderRepositoryImpl();
       submitReviewUseCase = SubmitReviewUseCase(reviewRepository, orderRepository);
       getReviewForOrderUseCase = GetReviewForOrderUseCase(reviewRepository);
