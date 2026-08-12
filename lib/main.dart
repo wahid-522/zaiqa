@@ -10,6 +10,8 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  // ignore: avoid_print
+  print('Firebase initialized: ${Firebase.apps.length} app(s)');
   runApp(
     const ProviderScope(
       child: ZaiqaApp(),
