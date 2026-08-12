@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/routing/route_names.dart';
-import '../../../../domain/entities/user_profile.dart';
 import '../../../../shared/widgets/zaiqa_button.dart';
 import '../../../../shared/widgets/zaiqa_text_field.dart';
 import '../viewmodels/auth_viewmodel.dart';
@@ -20,7 +19,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController(text: 'hamza@zaiqa.app');
   final _passwordController = TextEditingController(text: 'password123');
-  UserRole _selectedRole = UserRole.customer;
 
   @override
   void dispose() {
@@ -34,12 +32,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final success = await ref.read(authViewModelProvider.notifier).login(
             email: _emailController.text.trim(),
             password: _passwordController.text.trim(),
-            role: _selectedRole,
           );
       if (success && mounted) {
         final currentUser = ref.read(authViewModelProvider).user;
         if (currentUser?.isRestaurantOwner ?? false) {
-          context.go(RouteNames.restaurantMenuManagementPath);
+          final hasRestaurant = currentUser?.restaurantId != null && currentUser!.restaurantId!.isNotEmpty;
+          if (hasRestaurant) {
+            context.go(RouteNames.restaurantMenuManagementPath);
+          } else {
+            context.go(RouteNames.restaurantOnboardingPath);
+          }
         } else {
           context.go(RouteNames.homePath);
         }
@@ -100,140 +102,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Account Role Segmented Toggle (Customer vs Restaurant Owner)
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _selectedRole = UserRole.customer;
-                              });
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: _selectedRole == UserRole.customer
-                                    ? const Color(0xFFC63D00)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.person_outline_rounded,
-                                    size: 18,
-                                    color: _selectedRole == UserRole.customer
-                                        ? Colors.white
-                                        : Colors.grey.shade700,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'Customer',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: _selectedRole == UserRole.customer
-                                          ? Colors.white
-                                          : Colors.grey.shade700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _selectedRole = UserRole.restaurantOwner;
-                              });
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: _selectedRole == UserRole.restaurantOwner
-                                    ? const Color(0xFFC63D00)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.storefront_rounded,
-                                    size: 18,
-                                    color: _selectedRole == UserRole.restaurantOwner
-                                        ? Colors.white
-                                        : Colors.grey.shade700,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'Restaurant Owner',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: _selectedRole == UserRole.restaurantOwner
-                                          ? Colors.white
-                                          : Colors.grey.shade700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
                   // Quick Demo Autofill Chips Row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      ChoiceChip(
-                        avatar: const Icon(Icons.person_outline, size: 15, color: Color(0xFFC63D00)),
+                      ActionChip(
+                        avatar: const Icon(Icons.person_outline, size: 16, color: Color(0xFFC63D00)),
                         label: const Text('Customer Demo', style: TextStyle(fontSize: 12)),
-                        selected: _selectedRole == UserRole.customer,
-                        selectedColor: const Color(0xFFFFF0EC),
                         backgroundColor: Colors.white,
-                        onSelected: (val) {
-                          if (val) {
-                            setState(() {
-                              _selectedRole = UserRole.customer;
-                              _emailController.text = 'hamza@zaiqa.app';
-                              _passwordController.text = 'password123';
-                            });
-                          }
+                        onPressed: () {
+                          setState(() {
+                            _emailController.text = 'hamza@zaiqa.app';
+                            _passwordController.text = 'password123';
+                          });
                         },
                       ),
-                      const SizedBox(width: 8),
-                      ChoiceChip(
-                        avatar: const Icon(Icons.storefront_outlined, size: 15, color: Color(0xFFC63D00)),
+                      const SizedBox(width: 10),
+                      ActionChip(
+                        avatar: const Icon(Icons.storefront_outlined, size: 16, color: Color(0xFFC63D00)),
                         label: const Text('Owner Demo', style: TextStyle(fontSize: 12)),
-                        selected: _selectedRole == UserRole.restaurantOwner,
-                        selectedColor: const Color(0xFFFFF0EC),
                         backgroundColor: Colors.white,
-                        onSelected: (val) {
-                          if (val) {
-                            setState(() {
-                              _selectedRole = UserRole.restaurantOwner;
-                              _emailController.text = 'owner@zaiqa.app';
-                              _passwordController.text = 'password123';
-                            });
-                          }
+                        onPressed: () {
+                          setState(() {
+                            _emailController.text = 'wahid72701@gmail.com';
+                            _passwordController.text = 'password123';
+                          });
                         },
                       ),
                     ],
@@ -285,7 +178,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: 24),
 
                   ZaiqaButton(
-                    text: _selectedRole == UserRole.restaurantOwner ? 'Sign In as Restaurant Owner' : 'Sign In as Customer',
+                    text: 'Sign In',
                     isLoading: authState.isLoading,
                     onPressed: _onLogin,
                   ),

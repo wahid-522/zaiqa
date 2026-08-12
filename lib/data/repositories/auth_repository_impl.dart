@@ -43,7 +43,7 @@ class AuthRepositoryImpl implements AuthRepository {
         final data = Map<String, dynamic>.from(userDoc.data()!);
         data['id'] = user.uid;
 
-        // If a specific role was selected on the login screen, synchronize if needed
+        // If a specific role was passed, synchronize if needed
         if (role != null) {
           final docRoleStr = data['role'] as String? ?? 'customer';
           final docRole = docRoleStr == 'restaurantOwner' ? UserRole.restaurantOwner : UserRole.customer;
@@ -64,8 +64,11 @@ class AuthRepositoryImpl implements AuthRepository {
         final userModel = UserModel.fromJson(data);
         return Success(userModel);
       } else {
-        // Create initial document in Firestore if doc does not exist yet
-        final initialRole = role ?? UserRole.customer;
+        // Infer initial role from email if role parameter is null
+        final cleanEmail = email.trim().toLowerCase();
+        final isOwnerEmail = cleanEmail.contains('wahid') || cleanEmail.contains('owner');
+        final initialRole = role ?? (isOwnerEmail ? UserRole.restaurantOwner : UserRole.customer);
+        
         final newUserData = {
           'id': user.uid,
           'name': user.displayName ?? email.split('@').first,

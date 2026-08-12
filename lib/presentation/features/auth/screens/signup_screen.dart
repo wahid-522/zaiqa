@@ -42,7 +42,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             role: _selectedRole,
           );
       if (success && mounted) {
-        if (_selectedRole == UserRole.restaurantOwner) {
+        final currentUser = ref.read(authViewModelProvider).user;
+        if (currentUser?.isRestaurantOwner ?? (_selectedRole == UserRole.restaurantOwner)) {
           context.go(RouteNames.restaurantOnboardingPath);
         } else {
           context.go(RouteNames.homePath);
