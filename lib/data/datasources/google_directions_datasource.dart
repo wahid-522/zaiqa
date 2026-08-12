@@ -1,66 +1,52 @@
-import 'dart:convert';
 import 'dart:math';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
-import 'package:http/http.dart' as http;
 import '../../domain/entities/delivery_route.dart';
 
 class GoogleDirectionsDataSource {
-  final String apiKey;
-  final http.Client client;
+  final FirebaseFunctions? _customFunctions;
 
-  GoogleDirectionsDataSource({
-    String? apiKey,
-    http.Client? client,
-  })  : apiKey = apiKey ?? const String.fromEnvironment('DIRECTIONS_API_KEY', defaultValue: ''),
-        client = client ?? http.Client();
+  FirebaseFunctions get _functions => _customFunctions ?? FirebaseFunctions.instance;
+
+  GoogleDirectionsDataSource({FirebaseFunctions? functions})
+      : _customFunctions = functions;
 
   Future<DeliveryRoute> getDirections({
     required LatLngPoint origin,
     required LatLngPoint destination,
   }) async {
-    final url = Uri.parse(
-      'https://maps.googleapis.com/maps/api/directions/json'
-      '?origin=${origin.latitude},${origin.longitude}'
-      '&destination=${destination.latitude},${destination.longitude}'
-      '&key=$apiKey',
-    );
-
     try {
-      final response = await client.get(url);
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      final callable = _functions.httpsCallable('getDirections');
+      final response = await callable.call<Map<String, dynamic>>({
+        'originLat': origin.latitude,
+        'originLng': origin.longitude,
+        'destLat': destination.latitude,
+        'destLng': destination.longitude,
+      });
 
-        if (data['status'] == 'OK' && (data['routes'] as List).isNotEmpty) {
-          final route = data['routes'][0];
-          final leg = route['legs'][0];
+      final data = response.data;
+      if (data['status'] == 'OK') {
+        final distanceKm = (data['distanceKm'] as num? ?? 0.0).toDouble();
+        final durationMinutes = (data['durationMinutes'] as num? ?? 0).toInt();
+        final polylineString = data['polyline'] as String? ?? '';
 
-          final distanceText = leg['distance']['text'] as String? ?? '0 km';
-          final distanceMeters = (leg['distance']['value'] as num? ?? 0).toDouble();
-          final distanceKm = (distanceMeters / 1000.0);
+        final polylinePoints = PolylinePoints();
+        final decodedPoints = polylinePoints.decodePolyline(polylineString);
 
-          final durationText = leg['duration']['text'] as String? ?? '0 mins';
-          final durationSeconds = leg['duration']['value'] as int? ?? 0;
-          final durationMinutes = (durationSeconds / 60).round();
+        final routePoints = decodedPoints
+            .map((p) => LatLngPoint(p.latitude, p.longitude))
+            .toList();
 
-          final polylineString = route['overview_polyline']['points'] as String? ?? '';
-          final polylinePoints = PolylinePoints();
-          final decodedPoints = polylinePoints.decodePolyline(polylineString);
-
-          final routePoints = decodedPoints
-              .map((p) => LatLngPoint(p.latitude, p.longitude))
-              .toList();
-
-          return DeliveryRoute(
-            distanceText: distanceText,
-            distanceKm: distanceKm,
-            durationText: durationText,
-            durationMinutes: durationMinutes,
-            polylinePoints: routePoints,
-          );
-        }
+        return DeliveryRoute(
+          distanceText: '${distanceKm.toStringAsFixed(1)} km',
+          distanceKm: distanceKm,
+          durationText: '$durationMinutes mins',
+          durationMinutes: durationMinutes,
+          polylinePoints: routePoints.isNotEmpty ? routePoints : [origin, destination],
+        );
       }
     } catch (_) {
-      // Fallback calculation below if network error occurs
+      // Fallback calculation below if Cloud Function or network call fails
     }
 
     // Direct Haversine calculation fallback
