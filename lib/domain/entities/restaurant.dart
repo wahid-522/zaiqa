@@ -5,6 +5,7 @@ import 'menu_item.dart';
 class Restaurant extends Equatable {
   final String id;
   final String? ownerId;
+  final String? ownerEmail;
   final String name;
   final String imageUrl;
   final double rating;
@@ -31,6 +32,7 @@ class Restaurant extends Equatable {
   const Restaurant({
     required this.id,
     this.ownerId,
+    this.ownerEmail,
     required this.name,
     required this.imageUrl,
     required this.rating,
@@ -60,6 +62,7 @@ class Restaurant extends Equatable {
   Restaurant copyWith({
     String? id,
     String? ownerId,
+    String? ownerEmail,
     String? name,
     String? imageUrl,
     double? rating,
@@ -84,6 +87,7 @@ class Restaurant extends Equatable {
     return Restaurant(
       id: id ?? this.id,
       ownerId: ownerId ?? this.ownerId,
+      ownerEmail: ownerEmail ?? this.ownerEmail,
       name: name ?? this.name,
       imageUrl: imageUrl ?? this.imageUrl,
       rating: rating ?? this.rating,
@@ -111,6 +115,7 @@ class Restaurant extends Equatable {
   List<Object?> get props => [
         id,
         ownerId,
+        ownerEmail,
         name,
         imageUrl,
         rating,

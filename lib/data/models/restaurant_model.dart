@@ -6,6 +6,7 @@ class RestaurantModel extends Restaurant {
   const RestaurantModel({
     required super.id,
     super.ownerId,
+    super.ownerEmail,
     required super.name,
     required super.imageUrl,
     required super.rating,
@@ -38,6 +39,7 @@ class RestaurantModel extends Restaurant {
     return RestaurantModel(
       id: json['id'] as String,
       ownerId: json['ownerId'] as String?,
+      ownerEmail: json['ownerEmail'] as String?,
       name: json['name'] as String,
       imageUrl: json['imageUrl'] as String,
       rating: (json['rating'] as num).toDouble(),
@@ -68,6 +70,7 @@ class RestaurantModel extends Restaurant {
     return {
       'id': id,
       'ownerId': ownerId,
+      'ownerEmail': ownerEmail,
       'name': name,
       'imageUrl': imageUrl,
       'rating': rating,
@@ -95,6 +98,7 @@ class RestaurantModel extends Restaurant {
     return RestaurantModel(
       id: entity.id,
       ownerId: entity.ownerId,
+      ownerEmail: entity.ownerEmail,
       name: entity.name,
       imageUrl: entity.imageUrl,
       rating: entity.rating,

@@ -49,14 +49,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           // Auto-discover restaurant ID from Firestore if missing
           if ((restId == null || restId.isEmpty) && currentUser != null) {
             try {
-              final query = await FirebaseFirestore.instance
+              final emailInput = _emailController.text.trim();
+              
+              // 1. Query restaurants by ownerEmail
+              final emailQuery = await FirebaseFirestore.instance
                   .collection('restaurants')
-                  .where('ownerId', isEqualTo: currentUser.id)
+                  .where('ownerEmail', isEqualTo: emailInput)
                   .limit(1)
                   .get();
 
-              if (query.docs.isNotEmpty) {
-                restId = query.docs.first.id;
+              if (emailQuery.docs.isNotEmpty) {
+                restId = emailQuery.docs.first.id;
+              } else {
+                // 2. Query restaurants by ownerId
+                final idQuery = await FirebaseFirestore.instance
+                    .collection('restaurants')
+                    .where('ownerId', isEqualTo: currentUser.id)
+                    .limit(1)
+                    .get();
+                if (idQuery.docs.isNotEmpty) {
+                  restId = idQuery.docs.first.id;
+                }
+              }
+
+              if (restId != null && restId.isNotEmpty) {
                 await FirebaseFirestore.instance.collection('users').doc(currentUser.id).update({
                   'restaurantId': restId,
                   'role': 'restaurantOwner',

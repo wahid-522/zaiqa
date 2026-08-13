@@ -6,7 +6,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/routing/route_names.dart';
 import '../../../../domain/entities/restaurant.dart';
-import '../../../../domain/entities/user_profile.dart';
 import '../../../../shared/widgets/zaiqa_button.dart';
 import '../../../../shared/widgets/zaiqa_text_field.dart';
 import '../../../../shared/widgets/zaiqa_image_picker_tile.dart';
@@ -23,9 +22,15 @@ class RestaurantOnboardingScreen extends ConsumerStatefulWidget {
 
 class _RestaurantOnboardingScreenState extends ConsumerState<RestaurantOnboardingScreen> {
   final _formKey = GlobalKey<FormState>();
+
+  // Basic Information
   final _nameController = TextEditingController();
   final _addressController = TextEditingController();
   final _imageUrlController = TextEditingController();
+
+  // Owner Credentials
+  final _ownerEmailController = TextEditingController();
+  final _ownerPasswordController = TextEditingController();
 
   // Verification Documents
   final _licenseUrlController = TextEditingController();
@@ -72,6 +77,8 @@ class _RestaurantOnboardingScreenState extends ConsumerState<RestaurantOnboardin
     _nameController.dispose();
     _addressController.dispose();
     _imageUrlController.dispose();
+    _ownerEmailController.dispose();
+    _ownerPasswordController.dispose();
     _licenseUrlController.dispose();
     _premisesDocUrlController.dispose();
     super.dispose();
@@ -82,6 +89,20 @@ class _RestaurantOnboardingScreenState extends ConsumerState<RestaurantOnboardin
       if (_selectedCuisines.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please select at least one Food Category')),
+        );
+        return;
+      }
+
+      if (_ownerEmailController.text.trim().isEmpty || !_ownerEmailController.text.contains('@')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('A valid Restaurant Owner login email is required')),
+        );
+        return;
+      }
+
+      if (_ownerPasswordController.text.trim().length < 6) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Owner login password must be at least 6 characters')),
         );
         return;
       }
@@ -120,10 +141,13 @@ class _RestaurantOnboardingScreenState extends ConsumerState<RestaurantOnboardin
 
       final currentUser = ref.read(authViewModelProvider).user;
       final restaurantId = 'rest_${currentUser?.id ?? DateTime.now().millisecondsSinceEpoch}';
+      final ownerEmail = _ownerEmailController.text.trim();
+      final ownerPassword = _ownerPasswordController.text.trim();
 
       final newRestaurant = Restaurant(
         id: restaurantId,
         ownerId: currentUser?.id,
+        ownerEmail: ownerEmail,
         name: _nameController.text.trim(),
         imageUrl: _imageUrlController.text.trim(),
         rating: 5.0,
@@ -151,27 +175,31 @@ class _RestaurantOnboardingScreenState extends ConsumerState<RestaurantOnboardin
 
         createResult.when(
           success: (createdRest) async {
-            // Update Firestore users document & auth state current user with restaurantId and role
-            if (currentUser != null) {
-              try {
+            // Save restaurant owner credentials & link to user doc in Firestore
+            try {
+              if (currentUser != null) {
                 await FirebaseFirestore.instance.collection('users').doc(currentUser.id).update({
                   'restaurantId': createdRest.id,
-                  'role': 'restaurantOwner',
+                  'ownerEmail': ownerEmail,
+                  'ownerPassword': ownerPassword,
                 });
-              } catch (_) {}
+              }
 
-              ref.read(authViewModelProvider.notifier).updateCurrentUser(
-                    currentUser.copyWith(
-                      restaurantId: createdRest.id,
-                      role: UserRole.restaurantOwner,
-                    ),
-                  );
-            }
+              // Also store in owner_credentials collection for lookup
+              await FirebaseFirestore.instance.collection('owner_credentials').doc(ownerEmail.toLowerCase()).set({
+                'restaurantId': createdRest.id,
+                'email': ownerEmail,
+                'password': ownerPassword,
+                'createdAt': FieldValue.serverTimestamp(),
+              });
+            } catch (_) {}
+
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Restaurant registration submitted! Review pending.'),
+                  content: Text('Restaurant registration submitted! Review pending. Use your registered Owner Email & Password to log into the Owner Portal.'),
                   backgroundColor: Colors.green,
+                  duration: Duration(seconds: 4),
                 ),
               );
               context.go(RouteNames.profilePath);
@@ -314,6 +342,51 @@ class _RestaurantOnboardingScreenState extends ConsumerState<RestaurantOnboardin
                 const Divider(height: 1, thickness: 1),
                 const SizedBox(height: 24),
 
+                // Restaurant Owner Sign-In Credentials Section
+                Text(
+                  'Restaurant Owner Login Credentials',
+                  style: GoogleFonts.outfit(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFFC63D00),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Set the email & password you will use to sign into your Restaurant Portal.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 16),
+
+                ZaiqaTextField(
+                  label: 'Owner Login Email',
+                  hint: 'owner@myrestaurant.com',
+                  controller: _ownerEmailController,
+                  keyboardType: TextInputType.emailAddress,
+                  prefixIcon: Icons.email_outlined,
+                  validator: (val) {
+                    if (val == null || val.trim().isEmpty) return 'Owner login email is required';
+                    if (!val.contains('@')) return 'Enter a valid email address';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                ZaiqaTextField(
+                  label: 'Owner Login Password',
+                  hint: '••••••••',
+                  controller: _ownerPasswordController,
+                  obscureText: true,
+                  prefixIcon: Icons.lock_outline,
+                  validator: (val) {
+                    if (val == null || val.length < 6) return 'Password must be at least 6 characters';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 28),
+                const Divider(height: 1, thickness: 1),
+                const SizedBox(height: 24),
+
                 // Expanded Verification Section
                 Text(
                   'Verification Documents',
@@ -348,75 +421,45 @@ class _RestaurantOnboardingScreenState extends ConsumerState<RestaurantOnboardin
                       '2. Proof of Premises Requirement',
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF2C221E)),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Do you own or rent your restaurant building?',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                    ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Expanded(
                           child: ChoiceChip(
-                            avatar: Icon(
-                              Icons.home_outlined,
-                              size: 16,
-                              color: _premisesType == 'owned' ? AppColors.primary : Colors.grey,
-                            ),
-                            label: const Text('Property Owner'),
+                            label: const Center(child: Text('Property Owner')),
                             selected: _premisesType == 'owned',
                             selectedColor: const Color(0xFFFFF0EC),
-                            backgroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(
-                                color: _premisesType == 'owned' ? AppColors.primary : Colors.grey.shade300,
-                              ),
+                            labelStyle: TextStyle(
+                              fontWeight: _premisesType == 'owned' ? FontWeight.bold : FontWeight.normal,
+                              color: _premisesType == 'owned' ? AppColors.primary : const Color(0xFF2C221E),
                             ),
                             onSelected: (selected) {
-                              if (selected) {
-                                setState(() {
-                                  _premisesType = 'owned';
-                                });
-                              }
+                              if (selected) setState(() => _premisesType = 'owned');
                             },
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: ChoiceChip(
-                            avatar: Icon(
-                              Icons.description_outlined,
-                              size: 16,
-                              color: _premisesType == 'rented' ? AppColors.primary : Colors.grey,
-                            ),
-                            label: const Text('Rented Property'),
+                            label: const Center(child: Text('Rented Property')),
                             selected: _premisesType == 'rented',
                             selectedColor: const Color(0xFFFFF0EC),
-                            backgroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(
-                                color: _premisesType == 'rented' ? AppColors.primary : Colors.grey.shade300,
-                              ),
+                            labelStyle: TextStyle(
+                              fontWeight: _premisesType == 'rented' ? FontWeight.bold : FontWeight.normal,
+                              color: _premisesType == 'rented' ? AppColors.primary : const Color(0xFF2C221E),
                             ),
                             onSelected: (selected) {
-                              if (selected) {
-                                setState(() {
-                                  _premisesType = 'rented';
-                                });
-                              }
+                              if (selected) setState(() => _premisesType = 'rented');
                             },
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
-
                     ZaiqaImagePickerTile(
                       label: _premisesType == 'owned'
-                          ? 'Property Ownership Title Deed Document'
-                          : 'Rental / Lease Agreement Document',
+                          ? 'Upload Property Ownership Document / Title Deed'
+                          : 'Upload Rental / Lease Agreement',
                       initialImageUrl: _premisesDocUrlController.text,
                       onImageSelected: (path) {
                         _premisesDocUrlController.text = path;
@@ -424,12 +467,12 @@ class _RestaurantOnboardingScreenState extends ConsumerState<RestaurantOnboardin
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
-                // 3. Restaurant Premises Photos (Multi 1-5)
+                // 3. Restaurant Premises Photos Upload
                 ZaiqaMultiImagePicker(
                   label: '3. Restaurant Premises Photos',
-                  sublabel: 'Upload 1 to 5 photos showing your kitchen, seating area, or storefront',
+                  sublabel: 'Upload 1 to 5 clear photos of your dining/kitchen premises',
                   minImages: 1,
                   maxImages: 5,
                   initialImageUrls: _restaurantPhotos,
@@ -439,12 +482,12 @@ class _RestaurantOnboardingScreenState extends ConsumerState<RestaurantOnboardin
                     });
                   },
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
-                // 4. Physical Menu Photos (Multi 1-10)
+                // 4. Physical Menu Photos Upload
                 ZaiqaMultiImagePicker(
-                  label: '4. Physical Menu Photos',
-                  sublabel: 'Upload 1 to 10 photos of your printed or physical menu',
+                  label: '4. Physical Printed Menu Photos',
+                  sublabel: 'Upload 1 to 10 photos of your physical printed menu',
                   minImages: 1,
                   maxImages: 10,
                   initialImageUrls: _menuPhotos,
@@ -457,11 +500,11 @@ class _RestaurantOnboardingScreenState extends ConsumerState<RestaurantOnboardin
                 const SizedBox(height: 32),
 
                 ZaiqaButton(
-                  text: 'Submit Registration & Documents',
+                  text: 'Submit Restaurant Application',
                   isLoading: _isLoading,
                   onPressed: _onSaveRestaurant,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
               ],
             ),
           ),
