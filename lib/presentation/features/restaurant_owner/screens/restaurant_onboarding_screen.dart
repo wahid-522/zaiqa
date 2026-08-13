@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/routing/route_names.dart';
 import '../../../../domain/entities/restaurant.dart';
+import '../../../../domain/entities/user_profile.dart';
 import '../../../../shared/widgets/zaiqa_button.dart';
 import '../../../../shared/widgets/zaiqa_text_field.dart';
 import '../../../../shared/widgets/zaiqa_image_picker_tile.dart';
@@ -148,25 +150,39 @@ class _RestaurantOnboardingScreenState extends ConsumerState<RestaurantOnboardin
         });
 
         createResult.when(
-          success: (createdRest) {
-            // Update auth state current user with restaurantId
+          success: (createdRest) async {
+            // Update Firestore users document & auth state current user with restaurantId and role
             if (currentUser != null) {
+              try {
+                await FirebaseFirestore.instance.collection('users').doc(currentUser.id).update({
+                  'restaurantId': createdRest.id,
+                  'role': 'restaurantOwner',
+                });
+              } catch (_) {}
+
               ref.read(authViewModelProvider.notifier).updateCurrentUser(
-                    currentUser.copyWith(restaurantId: createdRest.id),
+                    currentUser.copyWith(
+                      restaurantId: createdRest.id,
+                      role: UserRole.restaurantOwner,
+                    ),
                   );
             }
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Restaurant registration submitted! Review pending.'),
-                backgroundColor: Colors.green,
-              ),
-            );
-            context.go(RouteNames.profilePath);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Restaurant registration submitted! Review pending.'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+              context.go(RouteNames.profilePath);
+            }
           },
           failure: (failure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Failed to submit restaurant: ${failure.message}')),
-            );
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Failed to submit restaurant: ${failure.message}')),
+              );
+            }
           },
         );
       }

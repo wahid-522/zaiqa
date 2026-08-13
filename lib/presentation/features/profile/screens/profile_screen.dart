@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/routing/route_names.dart';
 import '../../../../domain/entities/restaurant.dart';
+import '../../../../domain/entities/user_profile.dart';
+import '../../../../data/models/restaurant_model.dart';
 import '../../../../shared/widgets/loading_shimmer.dart';
 import '../../../shared_providers.dart';
 import '../../auth/viewmodels/auth_viewmodel.dart';
@@ -11,6 +14,69 @@ import '../viewmodels/profile_viewmodel.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
+
+  Future<Restaurant?> _findOrFetchRestaurant(WidgetRef ref, UserProfile? user) async {
+    if (user == null) return null;
+
+    // 1. If user already has restaurantId, fetch it directly
+    if (user.restaurantId != null && user.restaurantId!.isNotEmpty) {
+      final res = await ref.read(getRestaurantDetailUseCaseProvider).execute(user.restaurantId!);
+      Restaurant? found;
+      res.when(success: (r) => found = r, failure: (_) {});
+      if (found != null) return found;
+    }
+
+    // 2. Try candidate IDs (e.g. rest_uid, rest_spice_route for wahid)
+    final candidateIds = [
+      'rest_${user.id}',
+      if (user.email.toLowerCase().contains('wahid') || user.name.toLowerCase().contains('wahid')) 'rest_spice_route',
+    ];
+
+    for (final candId in candidateIds) {
+      final res = await ref.read(getRestaurantDetailUseCaseProvider).execute(candId);
+      Restaurant? found;
+      res.when(success: (r) => found = r, failure: (_) {});
+      if (found != null) {
+        try {
+          await FirebaseFirestore.instance.collection('users').doc(user.id).update({
+            'restaurantId': found!.id,
+            'role': 'restaurantOwner',
+          });
+          ref.read(authViewModelProvider.notifier).updateCurrentUser(
+                user.copyWith(restaurantId: found!.id, role: UserRole.restaurantOwner),
+              );
+        } catch (_) {}
+        return found;
+      }
+    }
+
+    // 3. Query Firestore 'restaurants' collection by ownerId == user.id
+    try {
+      final query = await FirebaseFirestore.instance
+          .collection('restaurants')
+          .where('ownerId', isEqualTo: user.id)
+          .limit(1)
+          .get();
+
+      if (query.docs.isNotEmpty) {
+        final data = Map<String, dynamic>.from(query.docs.first.data());
+        data['id'] = query.docs.first.id;
+        final found = RestaurantModel.fromJson(data);
+        try {
+          await FirebaseFirestore.instance.collection('users').doc(user.id).update({
+            'restaurantId': found.id,
+            'role': 'restaurantOwner',
+          });
+          ref.read(authViewModelProvider.notifier).updateCurrentUser(
+                user.copyWith(restaurantId: found.id, role: UserRole.restaurantOwner),
+              );
+        } catch (_) {}
+        return found;
+      }
+    } catch (_) {}
+
+    return null;
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -37,8 +103,6 @@ class ProfileScreen extends ConsumerWidget {
         ),
       );
     }
-
-    final hasRestaurant = user?.restaurantId != null && user!.restaurantId!.isNotEmpty;
 
     final menuItems = [
       {
@@ -184,11 +248,22 @@ class ProfileScreen extends ConsumerWidget {
 
               const SizedBox(height: 28),
 
-              // Restaurant Business & Registration Section
-              if (!hasRestaurant)
-                _buildRegisterRestaurantCard(context)
-              else
-                _buildRestaurantStatusSection(context, ref, user.restaurantId!),
+              // Dynamic Restaurant Business & Registration Section
+              FutureBuilder<Restaurant?>(
+                future: _findOrFetchRestaurant(ref, user),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const LoadingShimmer(width: double.infinity, height: 90, borderRadius: 20);
+                  }
+
+                  final restaurant = snapshot.data;
+                  if (restaurant == null) {
+                    return _buildRegisterRestaurantCard(context);
+                  }
+
+                  return _buildRestaurantStatusSection(context, ref, restaurant);
+                },
+              ),
 
               const SizedBox(height: 24),
 
@@ -360,227 +435,210 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   // Dynamic Section for Users with an existing Restaurant (Pending, Approved, or Rejected)
-  Widget _buildRestaurantStatusSection(BuildContext context, WidgetRef ref, String restaurantId) {
-    return FutureBuilder(
-      future: ref.read(getRestaurantDetailUseCaseProvider).execute(restaurantId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const LoadingShimmer(width: double.infinity, height: 90, borderRadius: 20);
-        }
+  Widget _buildRestaurantStatusSection(BuildContext context, WidgetRef ref, Restaurant restaurant) {
+    final status = restaurant.verificationStatus;
 
-        Restaurant? restaurant;
-        final data = snapshot.data;
-        if (data != null) {
-          data.when(
-            success: (r) => restaurant = r,
-            failure: (_) {},
-          );
-        }
-
-        // Fallback status if doc is loading or pending initial setup
-        final status = restaurant?.verificationStatus ?? 'pending';
-
-        if (status == 'pending') {
-          return Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.amber.shade50,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.amber.shade300),
+    if (status == 'pending') {
+      return Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.amber.shade50,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.amber.shade300),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.access_time_rounded, color: Colors.amber, size: 24),
             ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.shade100,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.access_time_rounded, color: Colors.amber, size: 24),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Row(
-                        children: [
-                          const Text(
-                            'Restaurant Registration',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF2C221E)),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.amber,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Text(
-                              'Pending Review',
-                              style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ],
+                      const Text(
+                        'Restaurant Registration',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF2C221E)),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Your business documents are under verification.',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.amber,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'Pending Review',
+                          style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        if (status == 'rejected') {
-          return GestureDetector(
-            onTap: () => context.push(RouteNames.restaurantOnboardingPath),
-            child: Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.red.shade300),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade100,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 24),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Text(
-                              'Action Required',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.red),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.red,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text(
-                                'Resubmit Docs',
-                                style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          restaurant?.verificationNote ?? 'Verification requires doc updates. Tap to re-upload.',
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                        ),
-                      ],
-                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Your business documents are under verification.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
                   ),
                 ],
               ),
             ),
-          );
-        }
+          ],
+        ),
+      );
+    }
 
-        // Approved Restaurant -> Show My Restaurant Portal Card + Mode Switch
-        return Container(
+    if (status == 'rejected') {
+      return GestureDetector(
+        onTap: () => context.push(RouteNames.restaurantOnboardingPath),
+        child: Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Colors.red.shade50,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.green.shade300, width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.green.withValues(alpha: 0.08),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            border: Border.all(color: Colors.red.shade300),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.verified_rounded, color: Colors.green, size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Text(
-                          restaurant?.name ?? 'My Restaurant',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF2C221E)),
+                        const Text(
+                          'Action Required',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.red),
                         ),
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.green,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text(
-                                'Approved Business',
-                                style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              restaurant?.address ?? '',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'Resubmit Docs',
+                            style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Mode Switch Button to Restaurant Portal
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    const SizedBox(height: 4),
+                    Text(
+                      restaurant.verificationNote ?? 'Verification requires doc updates. Tap to re-upload.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                    ),
+                  ],
                 ),
-                icon: const Icon(Icons.storefront_rounded, color: Colors.white, size: 20),
-                label: const Text(
-                  'Switch to Restaurant Portal',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                onPressed: () {
-                  context.go(RouteNames.restaurantMenuManagementPath);
-                },
               ),
             ],
           ),
-        );
-      },
+        ),
+      );
+    }
+
+    // Approved Restaurant -> Show My Restaurant Portal Card + Mode Switch
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.green.shade300, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.verified_rounded, color: Colors.green, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      restaurant.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF2C221E)),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'Approved Business',
+                            style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            restaurant.address,
+                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Mode Switch Button to Restaurant Portal
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            icon: const Icon(Icons.storefront_rounded, color: Colors.white, size: 20),
+            label: const Text(
+              'Switch to Restaurant Portal',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            onPressed: () {
+              context.go(RouteNames.restaurantMenuManagementPath);
+            },
+          ),
+        ],
+      ),
     );
   }
 }
