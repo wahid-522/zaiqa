@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_constants.dart';
 import '../../../../../core/routing/route_names.dart';
 import '../../../auth/viewmodels/auth_viewmodel.dart';
@@ -71,7 +72,46 @@ class RestaurantSettingsTab extends ConsumerWidget {
             children: [
               const SizedBox(height: 10),
 
-              // Restaurant Profile Header Card (Mirroring Customer Profile Header)
+              // Mode Switch Banner: Back to Customer Ordering View
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFFF0EC),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.shopping_bag_outlined, color: AppColors.primary, size: 22),
+                  ),
+                  title: const Text(
+                    'Switch to Customer Mode',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF2C221E)),
+                  ),
+                  subtitle: const Text(
+                    'Browse restaurants and order food',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.primary),
+                  onTap: () => context.go(RouteNames.homePath),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Restaurant Profile Header Card
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),

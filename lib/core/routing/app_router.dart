@@ -6,8 +6,6 @@ import '../../presentation/features/address_picker/screens/address_picker_screen
 import '../../presentation/features/address_picker/screens/saved_addresses_screen.dart';
 import '../../presentation/features/favorites/screens/favorites_screen.dart';
 import '../../presentation/features/order_history/screens/order_history_screen.dart';
-import '../../domain/entities/user_profile.dart';
-import '../../presentation/features/auth/screens/account_type_selection_screen.dart';
 import '../../presentation/features/auth/screens/login_screen.dart';
 import '../../presentation/features/auth/screens/signup_screen.dart';
 import '../../presentation/features/auth/viewmodels/auth_viewmodel.dart';
@@ -33,8 +31,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final user = authState.user;
       final isSplash = state.matchedLocation == RouteNames.splashPath;
       final isLoggingIn = state.matchedLocation == RouteNames.loginPath ||
-          state.matchedLocation == RouteNames.signupPath ||
-          state.matchedLocation == RouteNames.accountTypeSelectionPath;
+          state.matchedLocation == RouteNames.signupPath;
 
       if (isSplash) {
         return null;
@@ -46,30 +43,16 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (isAuth) {
         final isRestaurantOwner = user?.isRestaurantOwner ?? false;
-        final hasRestaurant = user?.restaurantId != null && user!.restaurantId!.isNotEmpty;
         final isOwnerRoute = state.matchedLocation.startsWith('/restaurant-owner');
 
-        // Role-based redirect upon login/signup
+        // Redirect from login/signup after authentication
         if (isLoggingIn) {
-          if (isRestaurantOwner) {
-            return hasRestaurant
-                ? RouteNames.restaurantMenuManagementPath
-                : RouteNames.restaurantOnboardingPath;
-          } else {
-            return RouteNames.homePath;
-          }
-        }
-
-        // Security Guard 1: Customer trying to access Restaurant Owner route -> redirect to Customer Home
-        if (!isRestaurantOwner && isOwnerRoute) {
           return RouteNames.homePath;
         }
 
-        // Security Guard 2: Restaurant Owner trying to access Customer route -> redirect to Restaurant Portal
-        if (isRestaurantOwner && !isOwnerRoute) {
-          return hasRestaurant
-              ? RouteNames.restaurantMenuManagementPath
-              : RouteNames.restaurantOnboardingPath;
+        // Security Guard: Non-restaurant owners trying to access Restaurant Owner route -> redirect to Customer Home
+        if (!isRestaurantOwner && isOwnerRoute) {
+          return RouteNames.homePath;
         }
       }
 
@@ -92,18 +75,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const LoginScreen(),
       ),
       GoRoute(
-        path: RouteNames.accountTypeSelectionPath,
-        name: RouteNames.accountTypeSelection,
-        builder: (context, state) => const AccountTypeSelectionScreen(),
-      ),
-      GoRoute(
         path: RouteNames.signupPath,
         name: RouteNames.signup,
-        builder: (context, state) {
-          final roleStr = state.uri.queryParameters['role'];
-          final role = roleStr == 'restaurantOwner' ? UserRole.restaurantOwner : UserRole.customer;
-          return SignupScreen(initialRole: role);
-        },
+        builder: (context, state) => const SignupScreen(),
       ),
       GoRoute(
         path: RouteNames.restaurantOnboardingPath,
@@ -134,6 +108,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const CheckoutScreen(),
       ),
       GoRoute(
+        path: RouteNames.orderTrackingPath,
+        name: RouteNames.orderTracking,
+        builder: (context, state) {
+          final orderId = state.pathParameters['orderId'] ?? '';
+          return OrderTrackingScreen(orderId: orderId);
+        },
+      ),
+      GoRoute(
+        path: RouteNames.profilePath,
+        name: RouteNames.profile,
+        builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
         path: RouteNames.addressPickerPath,
         name: RouteNames.addressPicker,
         builder: (context, state) => const AddressPickerScreen(),
@@ -154,14 +141,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const FavoritesScreen(),
       ),
       GoRoute(
-        path: RouteNames.orderTrackingPath,
-        name: RouteNames.orderTracking,
-        builder: (context, state) {
-          final orderId = state.pathParameters['orderId'] ?? '';
-          return OrderTrackingScreen(orderId: orderId);
-        },
-      ),
-      GoRoute(
         path: RouteNames.leaveReviewPath,
         name: RouteNames.leaveReview,
         builder: (context, state) {
@@ -176,11 +155,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           final orderId = state.pathParameters['orderId'] ?? '';
           return ViewReviewScreen(orderId: orderId);
         },
-      ),
-      GoRoute(
-        path: RouteNames.profilePath,
-        name: RouteNames.profile,
-        builder: (context, state) => const ProfileScreen(),
       ),
     ],
   );

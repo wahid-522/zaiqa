@@ -158,7 +158,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     children: [
                       const Text("Don't have an account? "),
                       GestureDetector(
-                        onTap: () => context.push(RouteNames.accountTypeSelectionPath),
+                        onTap: () => context.push(RouteNames.signupPath),
                         child: const Text(
                           'Sign Up',
                           style: TextStyle(

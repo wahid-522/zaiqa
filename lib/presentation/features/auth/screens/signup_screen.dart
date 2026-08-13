@@ -10,12 +10,7 @@ import '../../../../shared/widgets/zaiqa_text_field.dart';
 import '../viewmodels/auth_viewmodel.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
-  final UserRole initialRole;
-
-  const SignupScreen({
-    super.key,
-    this.initialRole = UserRole.customer,
-  });
+  const SignupScreen({super.key});
 
   @override
   ConsumerState<SignupScreen> createState() => _SignupScreenState();
@@ -46,16 +41,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             email: _emailController.text.trim(),
             phone: _phoneController.text.trim(),
             password: _passwordController.text.trim(),
-            role: widget.initialRole,
+            role: UserRole.customer,
           );
 
       if (success && mounted) {
-        final currentUser = ref.read(authViewModelProvider).user;
-        if (currentUser?.isRestaurantOwner ?? (widget.initialRole == UserRole.restaurantOwner)) {
-          context.go(RouteNames.restaurantOnboardingPath);
-        } else {
-          context.go(RouteNames.homePath);
-        }
+        context.go(RouteNames.homePath);
       }
     }
   }
@@ -63,7 +53,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authViewModelProvider);
-    final isOwner = widget.initialRole == UserRole.restaurantOwner;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFCF7F4),
@@ -74,9 +63,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF2C221E)),
           onPressed: () => context.pop(),
         ),
-        title: Text(
-          isOwner ? 'Restaurant Owner Registration' : 'Customer Registration',
-          style: const TextStyle(color: Color(0xFF2C221E), fontWeight: FontWeight.bold),
+        title: const Text(
+          'Create Account',
+          style: TextStyle(color: Color(0xFF2C221E), fontWeight: FontWeight.bold),
         ),
       ),
       body: SafeArea(
@@ -88,7 +77,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  isOwner ? 'Owner Account Details' : 'Personal Details',
+                  'Join Zaiqa Today',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -97,9 +86,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  isOwner
-                      ? 'Create your business account to manage your restaurant'
-                      : 'Fill in your information to start ordering delicious food',
+                  'Fill in your information to start ordering delicious food',
                   style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                 ),
                 const SizedBox(height: 24),
@@ -122,8 +109,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 ],
 
                 ZaiqaTextField(
-                  label: isOwner ? 'Owner Full Name' : 'Full Name',
-                  hint: isOwner ? 'e.g. Chef Marco / Owner' : 'e.g. Hamza Khan',
+                  label: 'Full Name',
+                  hint: 'e.g. Hamza Khan',
                   controller: _nameController,
                   prefixIcon: Icons.person_outline,
                   validator: (val) {
@@ -188,7 +175,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 const SizedBox(height: 28),
 
                 ZaiqaButton(
-                  text: isOwner ? 'Create Restaurant Account' : 'Create Account',
+                  text: 'Create Account',
                   isLoading: authState.isLoading,
                   onPressed: _onSignup,
                 ),

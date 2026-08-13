@@ -4,6 +4,7 @@ import 'menu_item.dart';
 /// Pure Domain Entity representing a Restaurant.
 class Restaurant extends Equatable {
   final String id;
+  final String? ownerId;
   final String name;
   final String imageUrl;
   final double rating;
@@ -16,8 +17,20 @@ class Restaurant extends Equatable {
   final String address;
   final List<MenuItem> menu;
 
+  // Document Verification & Premises Fields
+  final String verificationStatus; // 'pending' | 'approved' | 'rejected' | 'none'
+  final String? verificationDocumentUrl; // Business License / Food Authority Approval
+  final String premisesType; // 'owned' | 'rented'
+  final String? premisesDocumentUrl; // Property Ownership Document OR Lease Agreement
+  final List<String> restaurantPhotoUrls; // 1-5 photos
+  final List<String> menuPhotoUrls; // 1-10 photos
+  final DateTime? verificationSubmittedAt;
+  final DateTime? verificationReviewedAt;
+  final String? verificationNote;
+
   const Restaurant({
     required this.id,
+    this.ownerId,
     required this.name,
     required this.imageUrl,
     required this.rating,
@@ -29,10 +42,24 @@ class Restaurant extends Equatable {
     this.isOpen = true,
     required this.address,
     this.menu = const [],
+    this.verificationStatus = 'approved', // Existing seeded restaurants default to approved
+    this.verificationDocumentUrl,
+    this.premisesType = 'owned',
+    this.premisesDocumentUrl,
+    this.restaurantPhotoUrls = const [],
+    this.menuPhotoUrls = const [],
+    this.verificationSubmittedAt,
+    this.verificationReviewedAt,
+    this.verificationNote,
   });
+
+  bool get isApproved => verificationStatus == 'approved';
+  bool get isPending => verificationStatus == 'pending';
+  bool get isRejected => verificationStatus == 'rejected';
 
   Restaurant copyWith({
     String? id,
+    String? ownerId,
     String? name,
     String? imageUrl,
     double? rating,
@@ -44,9 +71,19 @@ class Restaurant extends Equatable {
     bool? isOpen,
     String? address,
     List<MenuItem>? menu,
+    String? verificationStatus,
+    String? verificationDocumentUrl,
+    String? premisesType,
+    String? premisesDocumentUrl,
+    List<String>? restaurantPhotoUrls,
+    List<String>? menuPhotoUrls,
+    DateTime? verificationSubmittedAt,
+    DateTime? verificationReviewedAt,
+    String? verificationNote,
   }) {
     return Restaurant(
       id: id ?? this.id,
+      ownerId: ownerId ?? this.ownerId,
       name: name ?? this.name,
       imageUrl: imageUrl ?? this.imageUrl,
       rating: rating ?? this.rating,
@@ -58,12 +95,22 @@ class Restaurant extends Equatable {
       isOpen: isOpen ?? this.isOpen,
       address: address ?? this.address,
       menu: menu ?? this.menu,
+      verificationStatus: verificationStatus ?? this.verificationStatus,
+      verificationDocumentUrl: verificationDocumentUrl ?? this.verificationDocumentUrl,
+      premisesType: premisesType ?? this.premisesType,
+      premisesDocumentUrl: premisesDocumentUrl ?? this.premisesDocumentUrl,
+      restaurantPhotoUrls: restaurantPhotoUrls ?? this.restaurantPhotoUrls,
+      menuPhotoUrls: menuPhotoUrls ?? this.menuPhotoUrls,
+      verificationSubmittedAt: verificationSubmittedAt ?? this.verificationSubmittedAt,
+      verificationReviewedAt: verificationReviewedAt ?? this.verificationReviewedAt,
+      verificationNote: verificationNote ?? this.verificationNote,
     );
   }
 
   @override
   List<Object?> get props => [
         id,
+        ownerId,
         name,
         imageUrl,
         rating,
@@ -75,5 +122,14 @@ class Restaurant extends Equatable {
         isOpen,
         address,
         menu,
+        verificationStatus,
+        verificationDocumentUrl,
+        premisesType,
+        premisesDocumentUrl,
+        restaurantPhotoUrls,
+        menuPhotoUrls,
+        verificationSubmittedAt,
+        verificationReviewedAt,
+        verificationNote,
       ];
 }

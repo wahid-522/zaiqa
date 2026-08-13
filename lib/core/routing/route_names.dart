@@ -29,9 +29,6 @@ class RouteNames {
   static const String signup = 'signup';
   static const String signupPath = '/signup';
 
-  static const String accountTypeSelection = 'accountTypeSelection';
-  static const String accountTypeSelectionPath = '/account-type-selection';
-
   static const String addressPicker = 'addressPicker';
   static const String addressPickerPath = '/address-picker';
 

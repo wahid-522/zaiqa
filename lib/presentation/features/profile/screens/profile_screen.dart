@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/constants/app_colors.dart';
 import '../../../../core/routing/route_names.dart';
+import '../../../../domain/entities/restaurant.dart';
 import '../../../../shared/widgets/loading_shimmer.dart';
+import '../../../shared_providers.dart';
 import '../../auth/viewmodels/auth_viewmodel.dart';
 import '../viewmodels/profile_viewmodel.dart';
 
@@ -35,6 +38,8 @@ class ProfileScreen extends ConsumerWidget {
       );
     }
 
+    final hasRestaurant = user?.restaurantId != null && user!.restaurantId!.isNotEmpty;
+
     final menuItems = [
       {
         'title': 'Saved Addresses',
@@ -53,16 +58,6 @@ class ProfileScreen extends ConsumerWidget {
         'icon': Icons.favorite_border,
         'isLogout': false,
         'onTap': () => context.push('/favorites'),
-      },
-      {
-        'title': 'Settings',
-        'icon': Icons.settings_outlined,
-        'isLogout': false,
-        'onTap': () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Settings feature coming soon!')),
-          );
-        },
       },
       {
         'title': 'Log Out',
@@ -84,6 +79,7 @@ class ProfileScreen extends ConsumerWidget {
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 10),
 
@@ -153,7 +149,7 @@ class ProfileScreen extends ConsumerWidget {
 
                     // User Name
                     Text(
-                      user?.name.isNotEmpty == true ? user!.name : 'Alex Carter',
+                      user?.name.isNotEmpty == true ? user!.name : 'Customer User',
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -173,7 +169,7 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          user?.phone.isNotEmpty == true ? user!.phone : '+1 (555) 123–4567',
+                          user?.phone.isNotEmpty == true ? user!.phone : '+92 300 1234567',
                           style: TextStyle(
                             fontSize: 13,
                             color: Colors.grey.shade600,
@@ -186,7 +182,15 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 28),
+
+              // Restaurant Business & Registration Section
+              if (!hasRestaurant)
+                _buildRegisterRestaurantCard(context)
+              else
+                _buildRestaurantStatusSection(context, ref, user.restaurantId!),
+
+              const SizedBox(height: 24),
 
               // Menu Action List Card Container
               Container(
@@ -222,7 +226,6 @@ class ProfileScreen extends ConsumerWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                             child: Row(
                               children: [
-                                // Left Icon in soft peach circle
                                 Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: const BoxDecoration(
@@ -237,7 +240,6 @@ class ProfileScreen extends ConsumerWidget {
                                 ),
                                 const SizedBox(width: 16),
 
-                                // Title Text
                                 Expanded(
                                   child: Text(
                                     title,
@@ -249,7 +251,6 @@ class ProfileScreen extends ConsumerWidget {
                                   ),
                                 ),
 
-                                // Right Chevron Arrow
                                 Icon(
                                   Icons.chevron_right,
                                   size: 20,
@@ -280,6 +281,306 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+
+  // Card for Customers who haven't registered a restaurant yet
+  Widget _buildRegisterRestaurantCard(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.push(RouteNames.restaurantOnboardingPath),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFF0EC),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.storefront_rounded,
+                size: 28,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Register Your Restaurant',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2C221E),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'List your kitchen on Zaiqa and accept orders',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFF0EC),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: AppColors.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Dynamic Section for Users with an existing Restaurant (Pending, Approved, or Rejected)
+  Widget _buildRestaurantStatusSection(BuildContext context, WidgetRef ref, String restaurantId) {
+    return FutureBuilder(
+      future: ref.read(getRestaurantDetailUseCaseProvider).execute(restaurantId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const LoadingShimmer(width: double.infinity, height: 90, borderRadius: 20);
+        }
+
+        Restaurant? restaurant;
+        final data = snapshot.data;
+        if (data != null) {
+          data.when(
+            success: (r) => restaurant = r,
+            failure: (_) {},
+          );
+        }
+
+        // Fallback status if doc is loading or pending initial setup
+        final status = restaurant?.verificationStatus ?? 'pending';
+
+        if (status == 'pending') {
+          return Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade50,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.amber.shade300),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade100,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.access_time_rounded, color: Colors.amber, size: 24),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text(
+                            'Restaurant Registration',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF2C221E)),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.amber,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'Pending Review',
+                              style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Your business documents are under verification.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (status == 'rejected') {
+          return GestureDetector(
+            onTap: () => context.push(RouteNames.restaurantOnboardingPath),
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.red.shade300),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              'Action Required',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.red),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'Resubmit Docs',
+                                style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          restaurant?.verificationNote ?? 'Verification requires doc updates. Tap to re-upload.',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // Approved Restaurant -> Show My Restaurant Portal Card + Mode Switch
+        return Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.green.shade300, width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.green.withValues(alpha: 0.08),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.verified_rounded, color: Colors.green, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          restaurant?.name ?? 'My Restaurant',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF2C221E)),
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.green,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'Approved Business',
+                                style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              restaurant?.address ?? '',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Mode Switch Button to Restaurant Portal
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.storefront_rounded, color: Colors.white, size: 20),
+                label: const Text(
+                  'Switch to Restaurant Portal',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                onPressed: () {
+                  context.go(RouteNames.restaurantMenuManagementPath);
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
