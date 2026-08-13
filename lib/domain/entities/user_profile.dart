@@ -27,7 +27,8 @@ class UserProfile extends Equatable {
     this.favoriteRestaurantIds = const [],
   });
 
-  bool get isRestaurantOwner => role == UserRole.restaurantOwner;
+  bool get isRestaurantOwner =>
+      role == UserRole.restaurantOwner || (restaurantId != null && restaurantId!.isNotEmpty);
   bool get isCustomer => role == UserRole.customer;
 
   UserProfile copyWith({

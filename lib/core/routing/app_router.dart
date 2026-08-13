@@ -44,13 +44,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (isAuth) {
         final isRestaurantOwner = user?.isRestaurantOwner ?? false;
         final isOwnerRoute = state.matchedLocation.startsWith('/restaurant-owner');
+        final isRegistrationRoute = state.matchedLocation == RouteNames.restaurantOnboardingPath;
 
         // Redirect from login/signup after authentication
         if (isLoggingIn) {
           return RouteNames.homePath;
         }
 
-        // Security Guard: Non-restaurant owners trying to access Restaurant Owner route -> redirect to Customer Home
+        // Allow any logged-in customer to access restaurant registration/onboarding
+        if (isRegistrationRoute) {
+          return null;
+        }
+
+        // Security Guard: Non-restaurant owners trying to access Restaurant Owner Management routes -> redirect to Customer Home
         if (!isRestaurantOwner && isOwnerRoute) {
           return RouteNames.homePath;
         }
