@@ -48,6 +48,10 @@ final routerProvider = Provider<GoRouter>((ref) {
 
         // Redirect from login/signup after authentication
         if (isLoggingIn) {
+          final isOwner = isRestaurantOwner || (user?.restaurantId != null && user!.restaurantId!.isNotEmpty);
+          if (isOwner) {
+            return RouteNames.restaurantMenuManagementPath;
+          }
           return RouteNames.homePath;
         }
 

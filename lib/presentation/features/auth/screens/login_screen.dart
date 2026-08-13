@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/routing/route_names.dart';
+import '../../../../domain/entities/user_profile.dart';
 import '../../../../shared/widgets/zaiqa_button.dart';
 import '../../../../shared/widgets/zaiqa_text_field.dart';
 import '../viewmodels/auth_viewmodel.dart';
+
+enum LoginMode { customer, restaurantOwner }
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -19,6 +23,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  LoginMode _selectedMode = LoginMode.customer;
 
   @override
   void dispose() {
@@ -32,18 +37,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final success = await ref.read(authViewModelProvider.notifier).login(
             email: _emailController.text.trim(),
             password: _passwordController.text.trim(),
+            role: _selectedMode == LoginMode.restaurantOwner ? UserRole.restaurantOwner : UserRole.customer,
           );
+
       if (success && mounted) {
         final currentUser = ref.read(authViewModelProvider).user;
-        if (currentUser?.isRestaurantOwner ?? false) {
-          final hasRestaurant = currentUser?.restaurantId != null && currentUser!.restaurantId!.isNotEmpty;
-          if (hasRestaurant) {
-            context.go(RouteNames.restaurantMenuManagementPath);
-          } else {
-            context.go(RouteNames.restaurantOnboardingPath);
+
+        if (_selectedMode == LoginMode.restaurantOwner || (currentUser?.isRestaurantOwner ?? false)) {
+          String? restId = currentUser?.restaurantId;
+
+          // Auto-discover restaurant ID from Firestore if missing
+          if ((restId == null || restId.isEmpty) && currentUser != null) {
+            try {
+              final query = await FirebaseFirestore.instance
+                  .collection('restaurants')
+                  .where('ownerId', isEqualTo: currentUser.id)
+                  .limit(1)
+                  .get();
+
+              if (query.docs.isNotEmpty) {
+                restId = query.docs.first.id;
+                await FirebaseFirestore.instance.collection('users').doc(currentUser.id).update({
+                  'restaurantId': restId,
+                  'role': 'restaurantOwner',
+                });
+                ref.read(authViewModelProvider.notifier).updateCurrentUser(
+                      currentUser.copyWith(restaurantId: restId, role: UserRole.restaurantOwner),
+                    );
+              }
+            } catch (_) {}
+          }
+
+          if (mounted) {
+            if (restId != null && restId.isNotEmpty) {
+              context.go(RouteNames.restaurantMenuManagementPath);
+            } else {
+              context.go(RouteNames.restaurantOnboardingPath);
+            }
           }
         } else {
-          context.go(RouteNames.homePath);
+          if (mounted) {
+            context.go(RouteNames.homePath);
+          }
         }
       }
     }
@@ -52,6 +87,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authViewModelProvider);
+    final isOwnerMode = _selectedMode == LoginMode.restaurantOwner;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFCF7F4),
@@ -100,7 +136,134 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
+
+                  // Portal Selection Switcher (Customer vs Restaurant Owner)
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedMode = LoginMode.customer;
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: !isOwnerMode ? AppColors.primary : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.shopping_bag_outlined,
+                                    size: 18,
+                                    color: !isOwnerMode ? Colors.white : Colors.grey.shade600,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Customer Login',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: !isOwnerMode ? Colors.white : Colors.grey.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedMode = LoginMode.restaurantOwner;
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: isOwnerMode ? AppColors.primary : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.storefront_rounded,
+                                    size: 18,
+                                    color: isOwnerMode ? Colors.white : Colors.grey.shade600,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Restaurant Owner',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: isOwnerMode ? Colors.white : Colors.grey.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Header Badge for Selected Mode
+                  if (isOwnerMode)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 20),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF0EC),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.storefront_rounded, color: AppColors.primary, size: 22),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: const [
+                                Text(
+                                  'Restaurant Partner Sign In',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF2C221E)),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Sign in with your email/password to manage menu & orders',
+                                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
                   // Error Banner
                   if (authState.errorMessage != null) ...[
@@ -120,7 +283,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ],
 
                   ZaiqaTextField(
-                    label: 'Email Address',
+                    label: isOwnerMode ? 'Restaurant Owner Email' : 'Email Address',
                     hint: 'enter your email',
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -147,7 +310,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: 24),
 
                   ZaiqaButton(
-                    text: 'Sign In',
+                    text: isOwnerMode ? 'Sign In to Restaurant Portal' : 'Sign In',
                     isLoading: authState.isLoading,
                     onPressed: _onLogin,
                   ),
