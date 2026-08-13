@@ -553,7 +553,7 @@ class ProfileScreen extends ConsumerWidget {
       );
     }
 
-    // Approved Restaurant Status Card (No direct portal navigation from Settings)
+    // Approved Restaurant Status Card with Switch to Portal Button
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -569,7 +569,7 @@ class ProfileScreen extends ConsumerWidget {
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
@@ -619,10 +619,23 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            'To access your Restaurant Owner Portal, log out and sign in with your Restaurant Owner email & password on the login screen.',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1.4),
+          const SizedBox(height: 16),
+
+          // Mode Switch Button to Restaurant Portal
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            icon: const Icon(Icons.storefront_rounded, color: Colors.white, size: 20),
+            label: const Text(
+              'Switch to Restaurant Portal',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            onPressed: () {
+              context.go(RouteNames.restaurantMenuManagementPath);
+            },
           ),
         ],
       ),
