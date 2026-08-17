@@ -46,8 +46,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         final isOwnerRoute = state.matchedLocation.startsWith('/restaurant-owner');
         final isRegistrationRoute = state.matchedLocation == RouteNames.restaurantOnboardingPath;
 
-        // Redirect from login/signup after authentication -> land on Customer Home by default
+        // Redirect from login/signup after authentication -> default to Restaurant Owner Portal if approved owner, else Customer Home
         if (isLoggingIn) {
+          if (isRestaurantOwner) {
+            return RouteNames.restaurantMenuManagementPath;
+          }
           return RouteNames.homePath;
         }
 

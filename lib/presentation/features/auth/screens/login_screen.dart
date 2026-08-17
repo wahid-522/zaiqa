@@ -35,7 +35,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           );
 
       if (success && mounted) {
-        context.go(RouteNames.homePath);
+        final currentUser = ref.read(authViewModelProvider).user;
+        if (currentUser?.isRestaurantOwner ?? false) {
+          context.go(RouteNames.restaurantMenuManagementPath);
+        } else {
+          context.go(RouteNames.homePath);
+        }
       }
     }
   }
